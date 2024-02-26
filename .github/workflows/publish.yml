@@ -48,7 +48,7 @@ jobs:
               if (latesVersion === process.env.PACKAGE_VERSION) throw new Error("当前要发布的版本号与 latest 版本号相同")
 
               return latesVersion
-            } catche () {
+            } catch (e) {
               return
             }
 
