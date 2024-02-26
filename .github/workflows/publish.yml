@@ -87,7 +87,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest, ubuntu-22.04, windows-latest]
+        platform: [macos-latest, windows-latest]
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -125,7 +125,7 @@ jobs:
           echo "BUILD_VERSION=$version" >> $Env:GITHUB_ENV
 
       - name: install frontend dependencies
-        run: pnpm install:all
+        run: pnpm install
 
       - uses: tauri-apps/tauri-action@v0
         if: matrix.platform == 'macos-latest'
