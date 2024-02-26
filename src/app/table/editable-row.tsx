@@ -6,6 +6,7 @@ import {
   Switch,
   createMemo,
   createSignal,
+  useContext,
 } from 'solid-js';
 import TabelCell from './cell';
 import {
@@ -29,7 +30,8 @@ import {
   LazyTooltip,
   LazySpace,
 } from '~/components';
-import { deepEqual } from '~/lib';
+import { checkExecutableFile, deepEqual } from '~/lib';
+import { AppContext } from '../context';
 
 interface InputCellProps {
   index: number;
@@ -224,6 +226,8 @@ interface TableEditableRowProps {
 }
 
 const TableEditableRow = (props: TableEditableRowProps) => {
+  const { download } = useContext(AppContext)!;
+
   const [editing, setEditing] = createSignal(props.defaultEditing);
   const [value, setValue] = createSignal(props.record);
 
@@ -233,7 +237,14 @@ const TableEditableRow = (props: TableEditableRowProps) => {
         .length > 0,
   );
 
-  const switchServerNode = () => {
+  const switchServerNode = async () => {
+    // 检测二进制文件
+    const executableFileExists = await checkExecutableFile();
+    if (!executableFileExists) {
+      download.setShow(true);
+      return;
+    }
+
     props.onGlobalChange?.(props.index);
   };
 

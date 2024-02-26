@@ -1,4 +1,4 @@
-import { Show, mergeProps } from 'solid-js';
+import { Show, createEffect, mergeProps } from 'solid-js';
 import './circle.scss';
 import { addClassNames } from '../utils';
 
@@ -13,6 +13,7 @@ interface CircleProgressProps {
     undone: string;
     done: string;
   };
+  onDone?: () => void;
 }
 
 const baseClassName = 'alley-progress-circle';
@@ -22,6 +23,10 @@ const CircleProgress = (props: CircleProgressProps) => {
     { trackWidth: 6, trackColor: '#2b2b2b', fillColor: 'var(--color-primary)' },
     props,
   );
+
+  createEffect(() => {
+    merged.percent === 100 && merged.onDone?.();
+  });
 
   const classes = () => addClassNames(baseClassName);
 
