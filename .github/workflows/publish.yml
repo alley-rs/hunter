@@ -31,22 +31,26 @@ jobs:
         id: latest-version
         with:
           script: |
-            const { data } = await github.request(
-              'GET /repos/{owner}/{repo}/releases/latest', 
-              {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                headers: {
-                  'X-GitHub-Api-Version': '2022-11-28'
+            try {
+              const { data } = await github.request(
+                'GET /repos/{owner}/{repo}/releases/latest', 
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  headers: {
+                    'X-GitHub-Api-Version': '2022-11-28'
+                  }
                 }
-              }
-            )
+              )
 
-            const latesVersion = data.tag_name.slice(1)
+              const latesVersion = data.tag_name.slice(1)
 
-            if (latesVersion === process.env.PACKAGE_VERSION) throw new Error("当前要发布的版本号与 latest 版本号相同")
+              if (latesVersion === process.env.PACKAGE_VERSION) throw new Error("当前要发布的版本号与 latest 版本号相同")
 
-            return latesVersion
+              return latesVersion
+            } catche () {
+              return
+            }
 
       - name: build changelog
         id: github_release_changelog
