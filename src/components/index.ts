@@ -29,3 +29,6 @@ export const LazyInputNumber = lazy(() => import('~/components/input-number'));
 
 export const LazySpinner = lazy(() => import('~/components/spinner'));
 export const LazyAlert = lazy(() => import('~/components/alert'));
+export const LazyCircleProgress = lazy(
+  () => import('~/components/progress/circle'),
+);

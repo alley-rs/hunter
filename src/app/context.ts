@@ -14,6 +14,10 @@ interface AppContextType {
     value: () => ServerNode | null | undefined;
     refetch: () => void;
   };
+  download: {
+    show: () => boolean;
+    setShow: (show: boolean) => void;
+  };
 }
 
 export const AppContext = createContext<AppContextType>();

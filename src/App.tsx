@@ -1,4 +1,4 @@
-import { createEffect, createResource } from 'solid-js';
+import { Show, createEffect, createResource, createSignal } from 'solid-js';
 import '~/App.scss';
 import { LazyRow } from '~/components';
 import { getAutostartState, getConfig, getProxyDaemon } from './lib';
@@ -10,6 +10,7 @@ import Autostart from './app/autostart';
 import ServerNodesTable from './app/serverNodesTable';
 import { checkTrojanProcess } from './lib/proxy';
 import { AppContext } from './app/context';
+import Download from './app/download';
 
 const App = () => {
   const [autostartState, { mutate: mutateAutostartState }] =
@@ -26,6 +27,8 @@ const App = () => {
     { mutate: mutateProxyDaemon, refetch: refetchProxyDaemon },
   ] = createResource(getProxyDaemon);
 
+  const [showDownloader, setShowDownloader] = createSignal<boolean>(false);
+
   createEffect(() => {
     if (runningServerNode() === undefined) return;
 
@@ -36,6 +39,7 @@ const App = () => {
     <div id="index">
       <AppContext.Provider
         value={{
+          download: { show: showDownloader, setShow: setShowDownloader },
           autostartState: {
             value: autostartState,
             mutate: mutateAutostartState,
@@ -54,6 +58,10 @@ const App = () => {
           },
         }}
       >
+        <Show when={showDownloader()}>
+          <Download />
+        </Show>
+
         <div>
           <LazyRow>
             <LocalAddr
