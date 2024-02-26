@@ -4,7 +4,6 @@
       {
         "fullscreen": false,
         "resizable": false,
-        "title": "",
         "titleBarStyle": "Transparent",
         "width": 800,
         "height": 480

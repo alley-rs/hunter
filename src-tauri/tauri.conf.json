@@ -49,9 +49,8 @@
       {
         "fullscreen": false,
         "resizable": false,
-        "title": "Hunter",
-        "width": 600,
-        "height": 400
+        "width": 800,
+        "height": 480
       }
     ]
   }
