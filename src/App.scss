@@ -1,0 +1,30 @@
+#root {
+  // height: 100vh;
+  // width: 100vw;
+  text-align: center;
+  // display: flex;
+  overflow: hidden;
+  padding: 0 1rem;
+
+  .dark-switch {
+    position: absolute;
+    right: 0;
+    top: 0;
+  }
+}
+
+#index {
+  flex: 1;
+  height: 100%;
+  padding-top: 20px;
+
+  .alley-button.fill {
+    width: 100%;
+  }
+
+  label {
+    font-size: 0.8rem;
+    color: var(--color-text-description);
+    margin-right: 8px;
+  }
+}
