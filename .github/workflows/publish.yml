@@ -125,7 +125,7 @@ jobs:
           echo "BUILD_VERSION=$version" >> $Env:GITHUB_ENV
 
       - name: install frontend dependencies
-        run: pnpm install:all
+        run: pnpm install
 
       - uses: tauri-apps/tauri-action@v0
         if: matrix.platform == 'macos-latest'
