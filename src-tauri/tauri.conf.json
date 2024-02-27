@@ -54,6 +54,7 @@
     },
     "windows": [
       {
+        "title": "Hunter",
         "fullscreen": false,
         "resizable": false,
         "width": 800,
