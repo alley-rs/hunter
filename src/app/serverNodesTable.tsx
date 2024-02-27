@@ -125,15 +125,14 @@ const ServerNodesTable = (props: ServerNodesTableProps) => {
           if (!pacState) await turnOnProxy();
         } else {
           // 否则切换节点
-          changeServerNodeAndTurnOnProxy(name);
+          await changeServerNodeAndTurnOnProxy(name);
         }
       } else {
-        changeServerNodeAndTurnOnProxy(name);
+        await changeServerNodeAndTurnOnProxy(name);
       }
 
       // 设置 pac 后立即获取 pac 状态可能会有延迟，不能通过 refecth 设置 pac 状态
       mutateProxyState(true);
-      runningServerNode.refetch();
     } else {
       // 关闭代理并杀死后台进程
       await turnOffProxy();
@@ -149,11 +148,13 @@ const ServerNodesTable = (props: ServerNodesTableProps) => {
       notify('已关闭系统代理');
     }
 
+    runningServerNode.refetch();
+
     // 切换 index 开关
-    setServerNodes(index, 'using', (checked) => {
-      props.switch(serverNodes[index].name);
-      return !checked;
-    });
+    // setServerNodes(index, 'using', (checked) => {
+    //   props.switch(serverNodes[index].name);
+    //   return !checked;
+    // });
   };
 
   const onGlobalChange = (index: number) => {
