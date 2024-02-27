@@ -138,6 +138,7 @@ async fn check_network_connectivity() -> HunterResult<f64> {
     #[cfg(target_os = "windows")]
     // windows 上可能需要更长的超时时间
     let timeout = Duration::from_secs(30);
+
     match check_proxy(timeout).await {
         Ok(s) => {
             info!("网络连接正常");
