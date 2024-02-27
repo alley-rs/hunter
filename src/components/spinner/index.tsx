@@ -34,6 +34,7 @@ const Spinner = (props: SpinnerProps) => {
 
   const style = (): JSX.CSSProperties => ({
     ...merged.style,
+    color: merged.color,
     '--alley-spinner-thickness': merged.thickness,
     '--alley-spinner-empty-color': merged.emptyColor,
     '--alley-spinner-animation-speed': merged.speed,
