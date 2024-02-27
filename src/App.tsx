@@ -11,6 +11,7 @@ import ServerNodesTable from './app/serverNodesTable';
 import { checkTrojanProcess } from './lib/proxy';
 import { AppContext } from './app/context';
 import Download from './app/download';
+import Checking from './app/checking';
 
 const App = () => {
   const [autostartState, { mutate: mutateAutostartState }] =
@@ -37,6 +38,11 @@ const App = () => {
 
   return (
     <div id="index">
+      <Checking
+        show={runningServerNode() === undefined}
+        text="检测进程状态..."
+      />
+
       <AppContext.Provider
         value={{
           download: { show: showDownloader, setShow: setShowDownloader },
