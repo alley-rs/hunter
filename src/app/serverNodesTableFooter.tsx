@@ -39,14 +39,22 @@ const ServerNodesTableFooter = (props: ServerNodesTableFooterProps) => {
 
   const checkConnect = async () => {
     setCheckingConnect(true);
-    const cost = await checkNetworkConnectivity();
-    const costFormatted =
-      cost > 1 ? cost.toFixed(1) + 's' : Math.round(cost * 1000) + 'ms';
-    await notify({
-      title: 'hunter 网络检测',
-      body: `网络已连通，访问谷歌用时：${costFormatted}`,
-    });
-    setCheckingConnect(false);
+    try {
+      const cost = await checkNetworkConnectivity();
+      const costFormatted =
+        cost > 1 ? cost.toFixed(1) + 's' : Math.round(cost * 1000) + 'ms';
+      await notify({
+        title: 'hunter 网络检测',
+        body: `网络已连通，访问谷歌用时：${costFormatted}`,
+      });
+    } catch (e) {
+      await notify({
+        title: 'hunter 网络检测失败',
+        body: String(e),
+      });
+    } finally {
+      setCheckingConnect(false);
+    }
   };
 
   return (
