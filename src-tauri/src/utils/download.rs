@@ -23,7 +23,7 @@ pub async fn download<R: Runtime, P: AsRef<Path>, U: IntoUrl>(
     headers: HashMap<&str, &str>,
 ) -> HunterResult<u32> {
     let builder = reqwest::Client::builder();
-    let client = builder.https_only(true).build().unwrap();
+    let client = builder.https_only(true).build()?;
 
     let mut request = client.get(url);
     // Loop trought the headers keys and values
