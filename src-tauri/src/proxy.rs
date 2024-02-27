@@ -130,7 +130,7 @@ where
 #[serde(tag = "type", rename_all = "UPPERCASE")]
 pub enum TrojanProcessState {
     Daemon(ServerNode),
-    InvalidServerNode { pid: u32 },
+    Invalid { pid: u32 },
     Other { pid: u32 },
 }
 
@@ -305,16 +305,43 @@ impl Proxy {
 
         debug!("获取到 trojan 进程信息：'{}'", output);
 
-        let params: Vec<&str> = output.splitn(2, " ").collect();
-        let pid_string = params[0];
+        #[cfg(target_os = "macos")]
+        let params = output.splitn(2, " ").map(|s| s.to_string()).collect();
+
+        #[cfg(target_os = "windows")]
+        let params = {
+            let params: Vec<String> = output.split(" ").map(|s| s.to_string()).collect();
+
+            let mut fourth = params[4].to_string().replace("\\", "/");
+            if fourth.contains("\r\n") {
+                fourth = fourth.splitn(2, "\r\n").collect::<Vec<&str>>()[0].to_string();
+            }
+
+            vec![
+                params[params.len() - 1].to_string(),
+                format!("{} {}", params[3].to_string(), fourth),
+            ]
+        };
+
+        info!("有效进程信息：{:?}", params);
+
+        let pid_string = &params[0];
 
         debug!("trojan 进程 id：{:?}", pid_string);
 
         let pid: u32 = pid_string.parse()?;
 
+        #[cfg(target_os = "windows")]
+        let params_should_be = format!(
+            "-config {}",
+            TROJAN_CONFIG_FILE_PATH.to_str().unwrap().replace("\\", "/")
+        );
+        #[cfg(not(target_os = "windows"))]
         let params_should_be = format!("-config {}", TROJAN_CONFIG_FILE_PATH.to_str().unwrap());
 
-        if params[1] != &params_should_be {
+        debug!("params_should_be: {}", params_should_be);
+
+        if params[1] != params_should_be {
             info!("检测到不是由本程序创建的 trojan 进程");
             return Ok(Some(TrojanProcessState::Other { pid }));
         }
@@ -328,7 +355,7 @@ impl Proxy {
             None => {
                 info!("检测到由本程序创建的 trojan 进程，但其配置文件中使用了无效节点");
 
-                Ok(Some(TrojanProcessState::InvalidServerNode { pid }))
+                Ok(Some(TrojanProcessState::Invalid { pid }))
             }
             Some(n) => {
                 info!("检测到由本程序创建的 trojan 进程");
