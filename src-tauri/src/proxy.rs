@@ -3,6 +3,7 @@ use std::os::windows::process::CommandExt;
 #[cfg(target_os = "macos")]
 use std::process::exit;
 use std::{
+    env,
     ffi::OsStr,
     fs,
     path::{Path, PathBuf},
@@ -26,7 +27,7 @@ use crate::{
     node::ServerNode,
 };
 
-#[cfg(target_os = "macos")]
+#[cfg(not(target_os = "windows"))]
 pub const EXECUTABLE_FILE: &str = "trojan-go";
 #[cfg(target_os = "windows")]
 pub const EXECUTABLE_FILE: &str = "trojan-go.exe";
@@ -51,6 +52,103 @@ pub struct Proxy {
     service: String,
     pub executable_file: PathBuf,
     auto_start_plist: PathBuf,
+    child_id: u32,
+    daemon: bool,
+}
+
+#[cfg(target_os = "linux")]
+#[derive(Debug, Clone)]
+enum Desktop {
+    KDE,
+    GNOME,
+}
+
+impl Desktop {
+    fn read_proxy_config(&self) -> HunterResult<Option<(String, String)>> {
+        let proxy_type = execute(
+            "kreadconfig5",
+            vec![
+                "--file",
+                "kioslaverc",
+                "--group",
+                "Proxy Settings",
+                "--key",
+                "ProxyType",
+            ],
+            "get proxy type",
+        )?;
+
+        trace!("read_proxy_type result: {}", proxy_type);
+
+        if proxy_type != "2" {
+            return Ok(None);
+        }
+
+        let proxy_config_script = execute(
+            "kreadconfig5",
+            vec![
+                "--file",
+                "kioslaverc",
+                "--group",
+                "Proxy Settings",
+                "--key",
+                "Proxy Config Script",
+            ],
+            "get Proxy Config Script",
+        )?;
+
+        Ok(Some((proxy_type, proxy_config_script)))
+    }
+
+    fn set_proxy_config(&self, pac: &str) -> HunterResult<()> {
+        execute(
+            "kwriteconfig5",
+            vec![
+                "--file",
+                "kioslaverc",
+                "--group",
+                "Proxy Settings",
+                "--key",
+                "ProxyType",
+                "2",
+            ],
+            "set proxy type",
+        )?;
+        execute(
+            "kwriteconfig5",
+            vec![
+                "--file",
+                "kioslaverc",
+                "--group",
+                "Proxy Settings",
+                "--key",
+                "Proxy Config Script",
+                pac,
+            ],
+            "set proxy config script",
+        )?;
+
+        Ok(())
+    }
+}
+
+impl TryFrom<&str> for Desktop {
+    type Error = String;
+    fn try_from(value: &str) -> std::result::Result<Self, String> {
+        match value {
+            "KDE" => Ok(Desktop::KDE),
+            "GNOME" => Ok(Desktop::GNOME),
+            _ => Err(format!("unkown desktop: {}", value)),
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[derive(Debug, Clone)]
+pub struct Proxy {
+    desktop: Desktop,
+    pub executable_file: PathBuf,
+    auto_start_desktop: PathBuf,
     child_id: u32,
     daemon: bool,
 }
@@ -115,7 +213,7 @@ where
     if output.status.success() {
         #[cfg(target_os = "windows")]
         let result = gbk_to_utf8(&output.stdout)?;
-        #[cfg(target_os = "macos")]
+        #[cfg(not(target_os = "windows"))]
         let result = String::from_utf8_lossy(&output.stdout);
 
         return Ok(result.trim().to_owned());
@@ -123,7 +221,7 @@ where
 
     #[cfg(target_os = "windows")]
     let err = gbk_to_utf8(&output.stderr)?;
-    #[cfg(target_os = "macos")]
+    #[cfg(not(target_os = "windows"))]
     let err = String::from_utf8_lossy(&output.stderr);
 
     error!("命令({})执行失败：{:?} -> {}", log_desc, cmd, err);
@@ -172,12 +270,28 @@ impl Proxy {
         }
 
         #[cfg(target_os = "windows")]
-        Ok(Proxy {
-            executable_file,
-            auto_start_vbs: AUTOSTART_DIR.join("trojan-go.vbs"),
-            child_id: 0,
-            daemon: false,
-        })
+        {
+            Ok(Proxy {
+                executable_file,
+                auto_start_vbs: AUTOSTART_DIR.join("trojan-go.vbs"),
+                child_id: 0,
+                daemon: false,
+            })
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            let desktop =
+                env::var("XDG_SESSION_DESKTOP").map_err(|e| Error::Other(e.to_string()))?;
+
+            Ok(Proxy {
+                desktop: Desktop::try_from(desktop.as_str()).map_err(|e| Error::Other(e))?,
+                executable_file,
+                auto_start_desktop: AUTOSTART_DIR.join("trojan-go.desktop"),
+                child_id: 0,
+                daemon: false,
+            })
+        }
     }
 
     pub fn child_id(&self) -> u32 {
@@ -210,6 +324,8 @@ impl Proxy {
     }
 
     pub fn enable_auto_proxy_url(&self, pac: &str) -> HunterResult<()> {
+        debug!("setting pac: {}", pac);
+
         #[cfg(target_os = "macos")]
         execute(
             "networksetup",
@@ -225,6 +341,9 @@ impl Proxy {
                 e
             })?;
         }
+
+        #[cfg(target_os = "linux")]
+        self.desktop.set_proxy_config(pac)?;
 
         Ok(())
     }
@@ -316,6 +435,23 @@ impl Proxy {
         }
     }
 
+    #[cfg(target_os = "linux")]
+    pub fn auto_proxy_url_state(&self) -> HunterResult<bool> {
+        let proxy_config = self.desktop.read_proxy_config()?;
+
+        match proxy_config {
+            None => Ok(false),
+            Some((proxy_type, proxy_config_script)) => {
+                debug!(
+                    "查询代理状态命令结果：type={} script={}",
+                    proxy_type, proxy_config_script
+                );
+
+                Ok(true)
+            }
+        }
+    }
+
     #[cfg(target_os = "macos")]
     pub fn auto_proxy_url_state(&self) -> HunterResult<bool> {
         let output = execute(
@@ -384,7 +520,15 @@ impl Proxy {
     fn execute_command(&self) -> HunterResult<Command> {
         trace!("运行 trojan");
 
-        let log_file = fs::File::open(CONFIG_DIR.join("hunter.log"))?;
+        let out_log_file = fs::File::create(CONFIG_DIR.join("hunter-out.log")).map_err(|e| {
+            error!("create hunter.log failed: {}", e);
+            e
+        })?;
+        let error_log_file =
+            fs::File::create(CONFIG_DIR.join("hunter-error.log")).map_err(|e| {
+                error!("create hunter-error.log failed: {}", e);
+                e
+            })?;
 
         let mut cmd = new_command(
             &self.executable_file,
@@ -393,7 +537,7 @@ impl Proxy {
             "使用配置文件运行 trojan",
         );
 
-        cmd.stdout(log_file.try_clone().unwrap()).stderr(log_file);
+        cmd.stdout(out_log_file).stderr(error_log_file);
 
         Ok(cmd)
     }
@@ -413,22 +557,28 @@ impl Proxy {
         Ok(())
     }
 
-    #[cfg(target_os = "macos")]
     pub fn auto_start_state(&self) -> bool {
+        #[cfg(target_os = "macos")]
         if self.auto_start_plist.exists() {
+            return true;
+        }
+
+        #[cfg(target_os = "windows")]
+        if self.auto_start_vbs.exists() {
+            return true;
+        }
+
+        #[cfg(target_os = "linux")]
+        if self.auto_start_desktop.exists() {
             return true;
         }
 
         false
     }
 
-    #[cfg(target_os = "windows")]
-    pub fn auto_start_state(&self) -> bool {
-        if self.auto_start_vbs.exists() {
-            return true;
-        }
-
-        false
+    #[cfg(target_os = "linux")]
+    pub fn switch_auto_start(&self, current_state: bool) -> HunterResult<()> {
+        Ok(())
     }
 
     #[cfg(target_os = "windows")]
@@ -488,7 +638,7 @@ pub fn kill(id: u32) -> HunterResult<()> {
         return Ok(());
     }
 
-    #[cfg(target_os = "macos")]
+    #[cfg(not(target_os = "windows"))]
     execute("kill", vec!["-9", &id.to_string()], "杀死进程")?;
 
     #[cfg(target_os = "windows")]

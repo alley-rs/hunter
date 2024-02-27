@@ -167,6 +167,13 @@ async fn download_executable_file(window: tauri::Window, id: u32) -> HunterResul
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     let url = "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-darwin-arm64.zip";
 
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    let url = "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-linux-amd64.zip";
+
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    let url =
+        "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-linux-arm.zip";
+
     cdn.set_path(&utf8_percent_encode(url, NON_ALPHANUMERIC).to_string());
 
     let file_path = EXECUTABLE_DIR.join("trojan-go.zip");
@@ -370,6 +377,11 @@ async fn main() -> HunterResult<()> {
         Error::Other(e.to_string())
     })?;
     info!("系统: {}", platform);
+
+    info!(
+        "using dirs: {:?} {:?} {:?}",
+        *EXECUTABLE_DIR, *CONFIG_DIR, *AUTOSTART_DIR
+    );
 
     trace!("初始化 tauri");
     tauri::Builder::default()

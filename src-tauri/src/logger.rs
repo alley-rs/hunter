@@ -34,8 +34,16 @@ pub fn logger_config(is_term: bool) -> Config {
         .add_filter_ignore_str("tao")
         .add_filter_ignore_str("mio")
         .add_filter_ignore_str("rustls")
-        .add_filter_ignore_str("reqwest")
-        .build()
+        .add_filter_ignore_str("reqwest");
+
+    #[cfg(target_os = "linux")]
+    {
+        config
+            .add_filter_ignore_str("async-io")
+            .add_filter_ignore_str("polling");
+    }
+
+    config.build()
 }
 
 pub fn log_level() -> LevelFilter {
