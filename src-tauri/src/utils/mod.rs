@@ -2,13 +2,19 @@ pub mod download;
 pub mod fs;
 pub mod unzip;
 
-use crate::error::{Error, HunterResult};
+use crate::{
+    config::CONFIG,
+    error::{Error, HunterResult},
+};
 use reqwest::{Client, Proxy};
 use std::time::{Duration, Instant};
 
 pub async fn check_proxy(duration: Duration) -> HunterResult<f64> {
+    info!("检测代理，超时时间：{:?}", duration);
+    let config = CONFIG.read().await;
+
     let retries = 3;
-    let proxy = Proxy::all("socks5h://127.0.0.1:1086")?;
+    let proxy = Proxy::all(config.local_socks5_addr())?;
     let client = Client::builder().proxy(proxy).build()?;
 
     let start = Instant::now();
@@ -32,9 +38,7 @@ pub async fn check_proxy(duration: Duration) -> HunterResult<f64> {
                 return Ok(cost.as_secs_f64());
             }
             Err(e) => {
-                if i < retries - 1 {
-                    continue;
-                } else {
+                if i == retries - 1 {
                     return Err(Error::Request(e));
                 }
             }

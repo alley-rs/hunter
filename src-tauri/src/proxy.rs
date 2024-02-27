@@ -5,15 +5,20 @@ use std::process::exit;
 use std::{
     ffi::OsStr,
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{self, Command},
 };
 
+#[cfg(target_os = "macos")]
 use regex::Regex;
 use serde::Serialize;
+use sysinfo::System;
 use tokio::sync::RwLock;
 #[cfg(target_os = "windows")]
-use winapi::um::winbase::CREATE_NO_WINDOW;
+use {
+    winapi::um::winbase::CREATE_NO_WINDOW,
+    windows_registry::{Key, Value, CURRENT_USER},
+};
 
 use crate::{
     config::{AUTOSTART_DIR, CONFIG, CONFIG_DIR, EXECUTABLE_DIR, TROJAN_CONFIG_FILE_PATH},
@@ -130,7 +135,7 @@ where
 #[serde(tag = "type", rename_all = "UPPERCASE")]
 pub enum TrojanProcessState {
     Daemon(ServerNode),
-    InvalidServerNode { pid: u32 },
+    Invalid { pid: u32 },
     Other { pid: u32 },
 }
 
@@ -213,21 +218,13 @@ impl Proxy {
         )?;
 
         #[cfg(target_os = "windows")]
-        execute(
-            "reg",
-            vec![
-                "add",
-                r#""HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings""#,
-                "/v",
-                "AutoConfigURL",
-                "/t",
-                "REG_SZ",
-                "/d",
-                &format!(r#""{pac}""#),
-                "/f",
-            ],
-            "配置 pac 注册表",
-        )?;
+        {
+            let key = self.get_registry_key(true)?;
+            key.set_string("AutoConfigURL", pac).map_err(|e| {
+                error!("设置 AutoConfigURL 失败：{}", e);
+                e
+            })?;
+        }
 
         Ok(())
     }
@@ -241,82 +238,56 @@ impl Proxy {
         )?;
 
         #[cfg(target_os = "windows")]
-        execute(
-            "reg",
-            vec![
-                "add",
-                r#""HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings""#,
-                "/v",
-                "AutoConfigURL",
-                "/t",
-                "REG_SZ",
-                "/d",
-                r#""""#,
-                "/f",
-            ],
-            "清空 pac 注册表",
-        )?;
+        {
+            let key = self.get_registry_key(true)?;
+            key.set_string("AutoConfigURL", "").map_err(|e| {
+                error!("取消 AutoConfigURL 失败：{}", e);
+                e
+            })?;
+        }
 
         Ok(())
     }
 
     pub async fn get_trojan_process_state(&mut self) -> HunterResult<Option<TrojanProcessState>> {
         trace!("获取 trojan 进程状态");
-        #[cfg(target_os = "macos")]
-        let output = execute(
-            "sh",
-            vec![
-                "-c",
-                r#"ps -ef | grep trojan | grep -v grep | awk '{print $2, $9, $10, $11}'"#,
-            ],
-            "查询 trojan 进程信息",
-        )
-        .map_err(|e| {
-            error!("获取 trojan 进程失败：{}", e);
-            e
-        })?;
 
+        #[derive(Debug)]
+        struct ProcessState {
+            pid: u32,
+            second: String,
+            third: String,
+        }
+
+        let mut state = ProcessState {
+            pid: 0,
+            second: String::new(),
+            third: String::new(),
+        };
+
+        #[cfg(not(target_os = "windows"))]
+        let name = "trojan-go";
         #[cfg(target_os = "windows")]
-        let output = execute(
-            "powershell",
-            vec![
-                "Get-WmiObject",
-                "Win32_Process",
-                "-Filter",
-                r#""name = 'trojan-go.exe'""#,
-                "|",
-                "Select-Object",
-                "-Property",
-                "CommandLine,ProcessId",
-                "|",
-                "Format-List",
-                "|",
-                "Out-String",
-                "-Width",
-                "4096",
-            ],
-            "查询 trojan 进程信息",
-        )?;
+        let name = "trojan-go.exe";
 
-        if output.len() == 0 {
-            debug!("未查询到 trojan 进程");
+        let sys = System::new_all();
+        for p in sys.processes_by_exact_name(name) {
+            state.pid = p.pid().as_u32();
+            state.second = p.cmd()[1].clone();
+            state.third = p.cmd()[2].clone();
+            break;
+        }
+
+        if state.pid == 0 {
+            info!("未检测到 trojan-go 进程");
             return Ok(None);
         }
 
-        debug!("获取到 trojan 进程信息：'{}'", output);
+        info!("检测到 trojan-go 进程：{:?}", state);
 
-        let params: Vec<&str> = output.splitn(2, " ").collect();
-        let pid_string = params[0];
-
-        debug!("trojan 进程 id：{:?}", pid_string);
-
-        let pid: u32 = pid_string.parse()?;
-
-        let params_should_be = format!("-config {}", TROJAN_CONFIG_FILE_PATH.to_str().unwrap());
-
-        if params[1] != &params_should_be {
+        if state.second == "-config" && Path::new(&state.third) != *TROJAN_CONFIG_FILE_PATH {
             info!("检测到不是由本程序创建的 trojan 进程");
-            return Ok(Some(TrojanProcessState::Other { pid }));
+            return Ok(Some(TrojanProcessState::Other { pid: state.pid }));
         }
 
         // trojan 正在运行时，在 trojan config 中获取到的 node 一定是有效的
@@ -328,13 +299,13 @@ impl Proxy {
             None => {
                 info!("检测到由本程序创建的 trojan 进程，但其配置文件中使用了无效节点");
 
-                Ok(Some(TrojanProcessState::InvalidServerNode { pid }))
+                Ok(Some(TrojanProcessState::Invalid { pid: state.pid }))
             }
             Some(n) => {
                 info!("检测到由本程序创建的 trojan 进程");
 
                 // trojan 进程由本程序启动且在程序运行前存在则为 daemon 进程
-                self.child_id = pid;
+                self.child_id = state.pid;
                 self.daemon = true;
 
                 Ok(Some(TrojanProcessState::Daemon(n)))
@@ -370,39 +341,39 @@ impl Proxy {
     }
 
     #[cfg(target_os = "windows")]
-    pub fn auto_proxy_url_state(&self) -> HunterResult<bool> {
-        let output = execute(
-            "reg",
-            vec![
-                "query",
-                r#"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings"#,
-                "/v",
-                "AutoConfigURL",
-            ],
-            "查询 pac 注册表",
-        )?;
+    fn get_registry_key(&self, write: bool) -> HunterResult<Key> {
+        if !write {
+            CURRENT_USER
+                .open(r#"Software\Microsoft\Windows\CurrentVersion\Internet Settings"#)
+                .map_err(Error::Registry)
+        } else {
+            CURRENT_USER
+                .create(r#"Software\Microsoft\Windows\CurrentVersion\Internet Settings"#)
+                .map_err(Error::Registry)
+        }
+    }
 
-        if output.len() == 0 {
+    #[cfg(target_os = "windows")]
+    pub fn auto_proxy_url_state(&self) -> HunterResult<bool> {
+        let key = self.get_registry_key(false)?;
+
+        let auto_config_url = match key.get_value("AutoConfigURL")? {
+            Value::String(s) => s,
+            _ => unreachable!(),
+        };
+
+        debug!("获取到 auto config url: {}", auto_config_url);
+
+        if auto_config_url.len() == 0 {
+            info!("自动 pac 未设置");
             return Ok(false);
         }
 
-        let re = Regex::new(r#"AutoConfigURL    REG_SZ    (.+)"#)?;
-        let caps = re.captures(&output);
+        info!("自动 pac 已设置：{}", auto_config_url);
 
-        if let Some(caps) = caps {
-            let state = caps.get(1).map(|m| m.as_str());
-
-            debug!("pac 配置：{:?}", state);
-
-            if let Some(state) = state {
-                debug!("系统代理已启用");
-                return Ok(state != "No");
-            }
-        }
-
-        debug!("系统代理未启用");
-        Ok(false)
+        Ok(true)
     }
+
     pub fn check_executable_file(&self) -> bool {
         self.executable_file.exists()
     }
