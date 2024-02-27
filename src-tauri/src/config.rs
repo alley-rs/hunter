@@ -83,8 +83,8 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            local_addr: "localhost".to_owned(),
-            local_port: 1080,
+            local_addr: "127.0.0.1".to_owned(),
+            local_port: 1086,
             pac: "https://mirror.ghproxy.com/https://raw.githubusercontent.com/thep0y/pac/main/blacklist.pac".to_owned(),
             nodes: Default::default(),
         }
@@ -126,6 +126,10 @@ impl Config {
     // pub fn nodes(&self) -> &[ServerNode] {
     //     &self.nodes
     // }
+
+    pub fn local_socks5_addr(&self) -> String {
+        format!("socks5h://{}:{}", self.local_addr, self.local_port)
+    }
 
     pub fn pac(&self) -> &str {
         &self.pac
