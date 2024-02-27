@@ -11,6 +11,7 @@ use std::{
 
 use regex::Regex;
 use serde::Serialize;
+use sysinfo::System;
 use tokio::sync::RwLock;
 #[cfg(target_os = "windows")]
 use winapi::um::winbase::CREATE_NO_WINDOW;
@@ -262,88 +263,38 @@ impl Proxy {
 
     pub async fn get_trojan_process_state(&mut self) -> HunterResult<Option<TrojanProcessState>> {
         trace!("获取 trojan 进程状态");
-        #[cfg(target_os = "macos")]
-        let output = execute(
-            "sh",
-            vec![
-                "-c",
-                r#"ps -ef | grep trojan | grep -v grep | awk '{print $2, $9, $10, $11}'"#,
-            ],
-            "查询 trojan 进程信息",
-        )
-        .map_err(|e| {
-            error!("获取 trojan 进程失败：{}", e);
-            e
-        })?;
 
-        #[cfg(target_os = "windows")]
-        let output = execute(
-            "powershell",
-            vec![
-                "Get-WmiObject",
-                "Win32_Process",
-                "-Filter",
-                r#""name = 'trojan-go.exe'""#,
-                "|",
-                "Select-Object",
-                "-Property",
-                "CommandLine,ProcessId",
-                "|",
-                "Format-List",
-                "|",
-                "Out-String",
-                "-Width",
-                "4096",
-            ],
-            "查询 trojan 进程信息",
-        )?;
+        #[derive(Debug)]
+        struct ProcessState {
+            pid: u32,
+            second: String,
+            third: String,
+        }
 
-        if output.len() == 0 {
-            debug!("未查询到 trojan 进程");
+        let mut state = ProcessState {
+            pid: 0,
+            second: String::new(),
+            third: String::new(),
+        };
+
+        let sys = System::new_all();
+        for p in sys.processes_by_exact_name("trojan-go") {
+            state.pid = p.pid().as_u32();
+            state.second = p.cmd()[1].clone();
+            state.third = p.cmd()[2].clone();
+            break;
+        }
+
+        if state.pid == 0 {
+            info!("未检测到 trojan-go 进程");
             return Ok(None);
         }
 
-        debug!("获取到 trojan 进程信息：'{}'", output);
+        info!("检测到 trojan-go 进程：{:?}", state);
 
-        #[cfg(target_os = "macos")]
-        let params = output.splitn(2, " ").map(|s| s.to_string()).collect();
-
-        #[cfg(target_os = "windows")]
-        let params = {
-            let params: Vec<String> = output.split(" ").map(|s| s.to_string()).collect();
-
-            let mut fourth = params[4].to_string().replace("\\", "/");
-            if fourth.contains("\r\n") {
-                fourth = fourth.splitn(2, "\r\n").collect::<Vec<&str>>()[0].to_string();
-            }
-
-            vec![
-                params[params.len() - 1].to_string(),
-                format!("{} {}", params[3].to_string(), fourth),
-            ]
-        };
-
-        info!("有效进程信息：{:?}", params);
-
-        let pid_string = &params[0];
-
-        debug!("trojan 进程 id：{:?}", pid_string);
-
-        let pid: u32 = pid_string.parse()?;
-
-        #[cfg(target_os = "windows")]
-        let params_should_be = format!(
-            "-config {}",
-            TROJAN_CONFIG_FILE_PATH.to_str().unwrap().replace("\\", "/")
-        );
-        #[cfg(not(target_os = "windows"))]
-        let params_should_be = format!("-config {}", TROJAN_CONFIG_FILE_PATH.to_str().unwrap());
-
-        debug!("params_should_be: {}", params_should_be);
-
-        if params[1] != params_should_be {
+        if state.second == "-config" && state.third != TROJAN_CONFIG_FILE_PATH.to_str().unwrap() {
             info!("检测到不是由本程序创建的 trojan 进程");
-            return Ok(Some(TrojanProcessState::Other { pid }));
+            return Ok(Some(TrojanProcessState::Other { pid: state.pid }));
         }
 
         // trojan 正在运行时，在 trojan config 中获取到的 node 一定是有效的
@@ -355,13 +306,13 @@ impl Proxy {
             None => {
                 info!("检测到由本程序创建的 trojan 进程，但其配置文件中使用了无效节点");
 
-                Ok(Some(TrojanProcessState::Invalid { pid }))
+                Ok(Some(TrojanProcessState::Invalid { pid: state.pid }))
             }
             Some(n) => {
                 info!("检测到由本程序创建的 trojan 进程");
 
                 // trojan 进程由本程序启动且在程序运行前存在则为 daemon 进程
-                self.child_id = pid;
+                self.child_id = state.pid;
                 self.daemon = true;
 
                 Ok(Some(TrojanProcessState::Daemon(n)))
