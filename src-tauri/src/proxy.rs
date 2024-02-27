@@ -272,9 +272,12 @@ impl Proxy {
 
         let sys = System::new_all();
         for p in sys.processes_by_exact_name(name) {
+            debug!("获取到进程：{} {:?}", p.pid(), p.cmd());
             state.pid = p.pid().as_u32();
-            state.second = p.cmd()[1].clone();
-            state.third = p.cmd()[2].clone();
+            if p.cmd().len() >= 3 {
+                state.second = p.cmd()[1].clone();
+                state.third = p.cmd()[2].clone();
+            }
             break;
         }
 
@@ -285,7 +288,7 @@ impl Proxy {
 
         info!("检测到 trojan-go 进程：{:?}", state);
 
-        if state.second == "-config" && Path::new(&state.third) != *TROJAN_CONFIG_FILE_PATH {
+        if state.second != "-config" || Path::new(&state.third) != *TROJAN_CONFIG_FILE_PATH {
             info!("检测到不是由本程序创建的 trojan 进程");
             return Ok(Some(TrojanProcessState::Other { pid: state.pid }));
         }
