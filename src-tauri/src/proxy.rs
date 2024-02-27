@@ -5,7 +5,7 @@ use std::process::exit;
 use std::{
     ffi::OsStr,
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{self, Command},
 };
 
@@ -277,8 +277,13 @@ impl Proxy {
             third: String::new(),
         };
 
+        #[cfg(not(target_os = "windows"))]
+        let name = "trojan-go";
+        #[cfg(target_os = "windows")]
+        let name = "trojan-go.exe";
+
         let sys = System::new_all();
-        for p in sys.processes_by_exact_name("trojan-go") {
+        for p in sys.processes_by_exact_name(name) {
             state.pid = p.pid().as_u32();
             state.second = p.cmd()[1].clone();
             state.third = p.cmd()[2].clone();
@@ -292,7 +297,7 @@ impl Proxy {
 
         info!("检测到 trojan-go 进程：{:?}", state);
 
-        if state.second == "-config" && state.third != TROJAN_CONFIG_FILE_PATH.to_str().unwrap() {
+        if state.second == "-config" && Path::new(&state.third) != *TROJAN_CONFIG_FILE_PATH {
             info!("检测到不是由本程序创建的 trojan 进程");
             return Ok(Some(TrojanProcessState::Other { pid: state.pid }));
         }
