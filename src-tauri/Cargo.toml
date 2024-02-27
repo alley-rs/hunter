@@ -42,7 +42,7 @@ zip = '0.6'
 toml = "0.8"
 sysinfo = "0.30"
 
-[target.'cfg(macos)'.dependencies]
+[target.'cfg(target-os = "macos")'.dependencies]
 regex = "1"
 
 [target.'cfg(windows)'.dependencies]
