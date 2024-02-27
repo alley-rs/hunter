@@ -9,12 +9,16 @@ use std::{
     process::{self, Command},
 };
 
+#[cfg(target_os = "macos")]
 use regex::Regex;
 use serde::Serialize;
 use sysinfo::System;
 use tokio::sync::RwLock;
 #[cfg(target_os = "windows")]
-use winapi::um::winbase::CREATE_NO_WINDOW;
+use {
+    winapi::um::winbase::CREATE_NO_WINDOW,
+    windows_registry::{Key, Value, CURRENT_USER},
+};
 
 use crate::{
     config::{AUTOSTART_DIR, CONFIG, CONFIG_DIR, EXECUTABLE_DIR, TROJAN_CONFIG_FILE_PATH},
@@ -214,21 +218,13 @@ impl Proxy {
         )?;
 
         #[cfg(target_os = "windows")]
-        execute(
-            "reg",
-            vec![
-                "add",
-                r#""HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings""#,
-                "/v",
-                "AutoConfigURL",
-                "/t",
-                "REG_SZ",
-                "/d",
-                &format!(r#""{pac}""#),
-                "/f",
-            ],
-            "配置 pac 注册表",
-        )?;
+        {
+            let key = self.get_registry_key(true)?;
+            key.set_string("AutoConfigURL", pac).map_err(|e| {
+                error!("设置 AutoConfigURL 失败：{}", e);
+                e
+            })?;
+        }
 
         Ok(())
     }
@@ -242,21 +238,13 @@ impl Proxy {
         )?;
 
         #[cfg(target_os = "windows")]
-        execute(
-            "reg",
-            vec![
-                "add",
-                r#""HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings""#,
-                "/v",
-                "AutoConfigURL",
-                "/t",
-                "REG_SZ",
-                "/d",
-                r#""""#,
-                "/f",
-            ],
-            "清空 pac 注册表",
-        )?;
+        {
+            let key = self.get_registry_key(true)?;
+            key.set_string("AutoConfigURL", "").map_err(|e| {
+                error!("取消 AutoConfigURL 失败：{}", e);
+                e
+            })?;
+        }
 
         Ok(())
     }
@@ -353,39 +341,39 @@ impl Proxy {
     }
 
     #[cfg(target_os = "windows")]
-    pub fn auto_proxy_url_state(&self) -> HunterResult<bool> {
-        let output = execute(
-            "reg",
-            vec![
-                "query",
-                r#"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings"#,
-                "/v",
-                "AutoConfigURL",
-            ],
-            "查询 pac 注册表",
-        )?;
+    fn get_registry_key(&self, write: bool) -> HunterResult<Key> {
+        if !write {
+            CURRENT_USER
+                .open(r#"Software\Microsoft\Windows\CurrentVersion\Internet Settings"#)
+                .map_err(Error::Registry)
+        } else {
+            CURRENT_USER
+                .create(r#"Software\Microsoft\Windows\CurrentVersion\Internet Settings"#)
+                .map_err(Error::Registry)
+        }
+    }
 
-        if output.len() == 0 {
+    #[cfg(target_os = "windows")]
+    pub fn auto_proxy_url_state(&self) -> HunterResult<bool> {
+        let key = self.get_registry_key(false)?;
+
+        let auto_config_url = match key.get_value("AutoConfigURL")? {
+            Value::String(s) => s,
+            _ => unreachable!(),
+        };
+
+        debug!("获取到 auto config url: {}", auto_config_url);
+
+        if auto_config_url.len() == 0 {
+            info!("自动 pac 未设置");
             return Ok(false);
         }
 
-        let re = Regex::new(r#"AutoConfigURL    REG_SZ    (.+)"#)?;
-        let caps = re.captures(&output);
+        info!("自动 pac 已设置：{}", auto_config_url);
 
-        if let Some(caps) = caps {
-            let state = caps.get(1).map(|m| m.as_str());
-
-            debug!("pac 配置：{:?}", state);
-
-            if let Some(state) = state {
-                debug!("系统代理已启用");
-                return Ok(state != "No");
-            }
-        }
-
-        debug!("系统代理未启用");
-        Ok(false)
+        Ok(true)
     }
+
     pub fn check_executable_file(&self) -> bool {
         self.executable_file.exists()
     }

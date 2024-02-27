@@ -12,6 +12,7 @@ pub enum Error {
     Request(#[from] reqwest::Error),
     #[error(transparent)]
     IntParse(#[from] ParseIntError),
+    #[cfg(target_os = "macos")]
     #[error(transparent)]
     Regex(#[from] regex::Error),
     #[error(transparent)]
@@ -20,6 +21,9 @@ pub enum Error {
     Logger(#[from] SetLoggerError),
     #[error(transparent)]
     Tauri(#[from] tauri::Error),
+    #[cfg(target_os = "windows")]
+    #[error(transparent)]
+    Registry(#[from] windows_result::Error),
     #[error(transparent)]
     StringFromUTF8(#[from] FromUtf8Error),
     #[error("toml: {0}")]
