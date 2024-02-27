@@ -51,6 +51,8 @@
   --color-scrollbar: rgba(0, 0, 0, 0.1);
   --color-scrollbar-hover: rgba(0, 0, 0, 0.4);
 
+  --color-mask: rgba(255, 255, 255, 0.8);
+
   --font-size-1: 9px;
   --font-size-2: 10px;
   --font-size-3: 11px;
@@ -164,6 +166,8 @@
 
   --color-scrollbar: rgba(255, 255, 255, 0.1);
   --color-scrollbar-hover: rgba(255, 255, 255, 0.2);
+
+  --color-mask: rgba(0, 0, 0, 0.5);
 
   --control-item-bg-hover: rgba(255, 255, 255, 0.08);
   --control-item-text-hover: var(--color-hover-text);
