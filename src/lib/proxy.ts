@@ -19,10 +19,11 @@ export const checkTrojanProcess = async () => {
     const { pid } = state;
     if (pid) {
       const ok = await confirm(
-        `检测到 trojan [pid=${pid}] 正在运行，但不是由本程序${state.type === 'OTHER' ? '启动' : '配置的有效节点'
+        `检测到 trojan [pid=${pid}] 正在运行，但不是由本程序${
+          state.type === 'OTHER' ? '启动' : '配置的有效节点'
         }，是否终止此进程？`,
         {
-          title: '进程冲突',
+          title: state.type === 'OTHER' ? '进程冲突' : '无效节点',
           okLabel: '终止此进程',
           cancelLabel: '关闭本程序',
         },
