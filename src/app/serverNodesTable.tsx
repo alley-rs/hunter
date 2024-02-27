@@ -133,6 +133,7 @@ const ServerNodesTable = (props: ServerNodesTableProps) => {
 
       // 设置 pac 后立即获取 pac 状态可能会有延迟，不能通过 refecth 设置 pac 状态
       mutateProxyState(true);
+      runningServerNode.refetch();
     } else {
       // 关闭代理并杀死后台进程
       await turnOffProxy();
