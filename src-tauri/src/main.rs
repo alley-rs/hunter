@@ -367,6 +367,12 @@ async fn main() -> HunterResult<()> {
         tracing_appender::non_blocking(file_appender)
     };
 
+    #[cfg(debug_assertions)]
+    let writer = {
+        use tracing_subscriber::fmt::writer::MakeWriterExt;
+        std::io::stderr.and(writer)
+    };
+
     let builder = tracing_subscriber::fmt()
         .with_max_level(Level::WARN)
         .with_file(true)
