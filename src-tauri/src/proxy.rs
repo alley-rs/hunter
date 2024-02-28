@@ -15,6 +15,7 @@ use regex::Regex;
 use serde::Serialize;
 use sysinfo::System;
 use tokio::sync::RwLock;
+use tracing::{debug, error, info, trace};
 #[cfg(target_os = "windows")]
 use {
     winapi::um::winbase::CREATE_NO_WINDOW,

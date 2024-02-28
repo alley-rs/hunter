@@ -1,4 +1,3 @@
-use log::SetLoggerError;
 use serde::{ser::Serializer, Serialize};
 use std::{num::ParseIntError, string::FromUtf8Error};
 
@@ -17,8 +16,6 @@ pub enum Error {
     Regex(#[from] regex::Error),
     #[error(transparent)]
     URLParse(#[from] url::ParseError),
-    #[error(transparent)]
-    Logger(#[from] SetLoggerError),
     #[error(transparent)]
     Tauri(#[from] tauri::Error),
     #[cfg(target_os = "windows")]

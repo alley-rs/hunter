@@ -35,12 +35,17 @@ thiserror = "1"
 lazy_static = "1"
 url = "2"
 percent-encoding = "2"
-log = "0.4"
-simplelog = "0.12"
-time = { version = "0.3", features = ['formatting', 'local-offset'] }
 zip = '0.6'
 toml = "0.8"
 sysinfo = "0.30"
+time = { version = "0.3", features = ['macros'] }
+tracing-subscriber = { version = "0.3", features = [
+  'time',
+  'env-filter',
+  'json',
+] }
+tracing = { version = "0.1", features = ["log", "release_max_level_info"] }
+tracing-appender = '0.2'
 
 [target.'cfg(target_os = "macos")'.dependencies]
 regex = "1"
@@ -48,7 +53,7 @@ regex = "1"
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["wincon"] }
 windows-registry = "0.1.0"
-windows-result="0.1.0"
+windows-result = "0.1.0"
 encoding = "0.2.33"
 
 [features]

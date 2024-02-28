@@ -1,4 +1,5 @@
 use tauri::{AppHandle, RunEvent};
+use tracing::{error, info};
 
 use crate::{
     config::{write_config_file, CONFIG},
