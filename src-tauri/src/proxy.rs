@@ -64,7 +64,7 @@ enum Desktop {
 }
 
 impl Desktop {
-    fn read_proxy_config(&self) -> HunterResult<Option<(String, String)>> {
+    fn read_kde_proxy_config(&self) -> HunterResult<Option<(String, String)>> {
         let proxy_type = execute(
             "kreadconfig5",
             vec![
@@ -100,7 +100,34 @@ impl Desktop {
         Ok(Some((proxy_type, proxy_config_script)))
     }
 
-    fn set_proxy_config(&self, pac: &str) -> HunterResult<()> {
+    pub fn read_gnome_proxy_config(&self) -> HunterResult<Option<(String, String)>> {
+        let mode = execute(
+            "gsettings",
+            vec!["get", "org.gnome.system.proxy", "mode"],
+            "read proxy config mode",
+        )?;
+
+        if mode != "auto" {
+            return Ok(None);
+        }
+
+        let url = execute(
+            "gsettings",
+            vec!["get", "org.gnome.system.proxy", "autoconfig-url"],
+            "read proxy auto config url",
+        )?;
+
+        Ok(Some((mode, url)))
+    }
+
+    fn read_proxy_config(&self) -> HunterResult<Option<(String, String)>> {
+        match self {
+            Desktop::KDE => self.read_kde_proxy_config(),
+            Desktop::GNOME => self.read_gnome_proxy_config(),
+        }
+    }
+
+    fn set_kde_proxy_config(&self, pac: &str) -> HunterResult<()> {
         execute(
             "kwriteconfig5",
             vec![
@@ -129,6 +156,29 @@ impl Desktop {
         )?;
 
         Ok(())
+    }
+
+    fn set_gnome_proxy_config(&self, pac: &str) -> HunterResult<()> {
+        execute(
+            "gsettings",
+            vec!["set", "org.gnome.system.proxy", "mode", "auto"],
+            "set proxy config mode",
+        )?;
+
+        execute(
+            "gsettings",
+            vec!["set", "org.gnome.system.proxy", "autoconfig-url", pac],
+            "set proxy auto config url",
+        )?;
+
+        Ok(())
+    }
+
+    fn set_proxy_config(&self, pac: &str) -> HunterResult<()> {
+        match self {
+            Desktop::KDE => self.set_kde_proxy_config(pac),
+            Desktop::GNOME => self.set_gnome_proxy_config(pac),
+        }
     }
 }
 
@@ -578,6 +628,40 @@ impl Proxy {
 
     #[cfg(target_os = "linux")]
     pub fn switch_auto_start(&self, current_state: bool) -> HunterResult<()> {
+        if current_state {
+            debug!("delete auto start script");
+            fs::remove_file(&self.auto_start_desktop).map_err(|e| {
+                error!("delete auto start script failed: {}", e);
+                e
+            })?;
+
+            info!("auto start script has been deleted");
+
+            return Ok(());
+        }
+
+        let content = format!(
+            r#"[Desktop Entry]
+Exec={} -config {}
+Icon=dialog-scripts
+Name=trojan-go
+Path=
+Type=Application
+X-KDE-AutostartScript=true
+"#,
+            self.executable_file.to_string_lossy(),
+            TROJAN_CONFIG_FILE_PATH.to_string_lossy()
+        );
+
+        debug!("add auto start script");
+
+        fs::write(&self.auto_start_desktop, content).map_err(|e| {
+            error!("add auto start script failed: {}", e);
+            e
+        })?;
+
+        info!("auto start script has been created");
+
         Ok(())
     }
 
