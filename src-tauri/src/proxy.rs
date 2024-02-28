@@ -181,6 +181,41 @@ impl Desktop {
             Desktop::GNOME => self.set_gnome_proxy_config(pac),
         }
     }
+
+    fn disable_kde_auto_proxy(&self) -> HunterResult<()> {
+        execute(
+            "kwriteconfig5",
+            vec![
+                "--file",
+                "kioslaverc",
+                "--group",
+                "Proxy Settings",
+                "--key",
+                "ProxyType",
+                "0",
+            ],
+            "set proxy type",
+        )?;
+
+        Ok(())
+    }
+
+    fn disable_gnome_auto_proxy(&self) -> HunterResult<()> {
+        execute(
+            "gsettings",
+            vec!["set", "org.gnome.system.proxy", "mode", "none"],
+            "set proxy config mode",
+        )?;
+
+        Ok(())
+    }
+
+    fn disable_auto_proxy(&self) -> HunterResult<()> {
+        match self {
+            Desktop::KDE => self.disable_kde_auto_proxy(),
+            Desktop::GNOME => self.disable_gnome_auto_proxy(),
+        }
+    }
 }
 
 impl TryFrom<&str> for Desktop {
@@ -415,6 +450,9 @@ impl Proxy {
                 e
             })?;
         }
+
+        #[cfg(target_os = "linux")]
+        self.desktop.disable_auto_proxy()?;
 
         Ok(())
     }
