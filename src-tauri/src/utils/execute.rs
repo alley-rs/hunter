@@ -56,7 +56,10 @@ where
         log_desc,
     );
 
-    let output = cmd.output()?;
+    let output = cmd.output().map_err(|e| {
+        error!(message = "获取命令输出失败", error = ?e);
+        e
+    })?;
 
     if output.status.success() {
         #[cfg(target_os = "windows")]
