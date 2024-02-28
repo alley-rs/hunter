@@ -29,8 +29,7 @@ lazy_static! {
             .join("Programs")
             .join("Startup")
     } else {
-        error!("不支持此平台");
-        exit(1);
+        dirs::config_dir().unwrap().join("autostart")
     };
     pub static ref CONFIG: RwLock<Config> = RwLock::new(match read_config_file() {
         Ok(c) => c,
