@@ -1,4 +1,3 @@
-use log::debug;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::{
@@ -6,6 +5,7 @@ use std::{
     io,
     path::PathBuf,
 };
+use tracing::{debug, trace};
 use zip::ZipArchive;
 
 #[derive(Debug, Deserialize, Serialize)]

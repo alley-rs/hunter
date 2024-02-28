@@ -4,7 +4,7 @@
 mod config;
 // mod consts;
 mod error;
-mod logger;
+// mod logger;
 mod node;
 mod proxy;
 mod run_event;
@@ -12,30 +12,23 @@ mod run_event;
 mod utils;
 
 #[macro_use]
-extern crate log;
-#[macro_use]
 extern crate lazy_static;
 
 use std::collections::HashMap;
-#[cfg(not(debug_assertions))]
-use std::fs::File;
 use std::path::PathBuf;
 use std::time::Duration;
 
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use proxy::TrojanProcessState;
-use simplelog::CombinedLogger;
-#[cfg(not(debug_assertions))]
-use simplelog::WriteLogger;
-#[cfg(debug_assertions)]
-use simplelog::{ColorChoice, TermLogger, TerminalMode};
 use tauri::utils::platform::target_triple;
 use tauri::AppHandle;
+use time::macros::{format_description, offset};
+use tracing::{debug, error, info, trace, Level};
+use tracing_subscriber::fmt::time::OffsetTime;
 use url::Url;
 
 use crate::config::{Config, AUTOSTART_DIR, CONFIG, CONFIG_DIR, EXECUTABLE_DIR};
 use crate::error::{Error, HunterResult};
-use crate::logger::{log_level, logger_config};
 use crate::node::ServerNode;
 use crate::proxy::{kill, EXECUTABLE_FILE, PROXY};
 use crate::run_event::handle_run_event;
@@ -166,6 +159,13 @@ async fn download_executable_file(window: tauri::Window, id: u32) -> HunterResul
 
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     let url = "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-darwin-arm64.zip";
+
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    let url = "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-linux-amd64.zip";
+
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    let url =
+        "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-linux-arm.zip";
 
     cdn.set_path(&utf8_percent_encode(url, NON_ALPHANUMERIC).to_string());
 
@@ -351,18 +351,42 @@ async fn main() -> HunterResult<()> {
     create_dir_if_not_exists(&[&EXECUTABLE_DIR, &CONFIG_DIR, &AUTOSTART_DIR])?;
 
     #[cfg(debug_assertions)]
-    CombinedLogger::init(vec![TermLogger::new(
-        log_level(),
-        logger_config(true),
-        TerminalMode::Mixed,
-        ColorChoice::Auto,
-    )])?;
+    let timer = OffsetTime::new(
+        offset!(+8),
+        format_description!("[hour]:[minute]:[second].[subsecond digits:3]"),
+    );
     #[cfg(not(debug_assertions))]
-    CombinedLogger::init(vec![WriteLogger::new(
-        log_level(),
-        logger_config(true),
-        File::create(CONFIG_DIR.join("hunter.log"))?,
-    )])?;
+    let timer = OffsetTime::new(
+        offset!(+8),
+        format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]"),
+    );
+
+    // NOTE: _guard must be a top-level variable
+    let (writer, _guard) = {
+        let file_appender = tracing_appender::rolling::never(&*CONFIG_DIR, "hunter.log");
+        tracing_appender::non_blocking(file_appender)
+    };
+
+    #[cfg(debug_assertions)]
+    let writer = {
+        use tracing_subscriber::fmt::writer::MakeWriterExt;
+        std::io::stderr.and(writer)
+    };
+
+    let builder = tracing_subscriber::fmt()
+        .with_max_level(Level::WARN)
+        .with_file(true)
+        .with_line_number(true)
+        .with_target(false)
+        .with_env_filter("hunter")
+        .with_timer(timer)
+        .with_writer(writer);
+
+    #[cfg(debug_assertions)]
+    builder.init();
+
+    #[cfg(not(debug_assertions))]
+    builder.json().init();
 
     trace!("获取系统信息");
     let platform = target_triple().map_err(|e| {
@@ -370,6 +394,11 @@ async fn main() -> HunterResult<()> {
         Error::Other(e.to_string())
     })?;
     info!("系统: {}", platform);
+
+    info!(
+        "using dirs: {:?} {:?} {:?}",
+        *EXECUTABLE_DIR, *CONFIG_DIR, *AUTOSTART_DIR
+    );
 
     trace!("初始化 tauri");
     tauri::Builder::default()

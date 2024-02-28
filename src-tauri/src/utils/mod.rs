@@ -2,12 +2,14 @@ pub mod download;
 pub mod fs;
 pub mod unzip;
 
+use reqwest::{Client, Proxy};
+use std::time::{Duration, Instant};
+use tracing::{debug, info, trace};
+
 use crate::{
     config::CONFIG,
     error::{Error, HunterResult},
 };
-use reqwest::{Client, Proxy};
-use std::time::{Duration, Instant};
 
 pub async fn check_proxy(duration: Duration) -> HunterResult<f64> {
     info!("检测代理，超时时间：{:?}", duration);
