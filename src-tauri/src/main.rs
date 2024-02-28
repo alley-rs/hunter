@@ -361,26 +361,26 @@ async fn main() -> HunterResult<()> {
         format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]"),
     );
 
-    let builder = tracing_subscriber::fmt()
-        .with_max_level(Level::WARN)
-        .with_file(true)
-        .with_line_number(true)
-        .with_target(false)
-        .with_env_filter("hunter")
-        .with_timer(timer);
-
-    #[cfg(not(debug_assertions))]
     // NOTE: _guard must be a top-level variable
     let (writer, _guard) = {
         let file_appender = tracing_appender::rolling::never(&*CONFIG_DIR, "hunter.log");
         tracing_appender::non_blocking(file_appender)
     };
 
+    let builder = tracing_subscriber::fmt()
+        .with_max_level(Level::WARN)
+        .with_file(true)
+        .with_line_number(true)
+        .with_target(false)
+        .with_env_filter("hunter")
+        .with_timer(timer)
+        .with_writer(writer);
+
     #[cfg(debug_assertions)]
     builder.init();
 
     #[cfg(not(debug_assertions))]
-    builder.with_writer(writer).json().init();
+    builder.json().init();
 
     trace!("获取系统信息");
     let platform = target_triple().map_err(|e| {
