@@ -1,7 +1,5 @@
 #[cfg(target_os = "linux")]
 use std::env;
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
 #[cfg(target_os = "macos")]
 use std::process::exit;
 use std::{
@@ -17,19 +15,18 @@ use sysinfo::System;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, trace};
 #[cfg(target_os = "windows")]
-use {
-    winapi::um::winbase::CREATE_NO_WINDOW,
-    windows_registry::{Key, Value, CURRENT_USER},
-};
+use windows_registry::{Key, Value, CURRENT_USER};
 
+#[cfg(not(target_os = "macos"))]
+use crate::error::Error;
+#[cfg(target_os = "linux")]
+use crate::linux::Desktop;
 use crate::{
     config::{AUTOSTART_DIR, CONFIG, CONFIG_DIR, EXECUTABLE_DIR, TROJAN_CONFIG_FILE_PATH},
     error::HunterResult,
     node::ServerNode,
     utils::execute::{execute, new_command},
 };
-#[cfg(target_os = "linux")]
-use {crate::error::Error, crate::linux::Desktop};
 
 #[cfg(not(target_os = "windows"))]
 pub const EXECUTABLE_FILE: &str = "trojan-go";
@@ -77,18 +74,6 @@ pub struct Proxy {
     auto_start_vbs: PathBuf,
     child_id: u32,
     daemon: bool,
-}
-
-#[cfg(target_os = "windows")]
-fn gbk_to_utf8(bytes: &[u8]) -> HunterResult<String> {
-    use encoding::all::GBK;
-    use encoding::{DecoderTrap, Encoding};
-
-    let decoded = GBK
-        .decode(bytes, DecoderTrap::Strict)
-        .map_err(|e| Error::Other(e.to_string()))?;
-
-    Ok(decoded)
 }
 
 #[derive(Debug, Serialize)]
