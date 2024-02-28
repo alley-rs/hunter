@@ -1,6 +1,8 @@
 use std::{ffi::OsStr, process::Command};
 
-use tracing::{debug, error};
+#[cfg(debug_assertions)]
+use tracing::debug;
+use tracing::error;
 
 use crate::error::{Error, HunterResult};
 

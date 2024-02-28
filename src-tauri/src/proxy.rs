@@ -1,9 +1,11 @@
+#[cfg(target_os = "linux")]
+use std::env;
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 #[cfg(target_os = "macos")]
 use std::process::exit;
 use std::{
-    env, fs,
+    fs,
     path::{Path, PathBuf},
     process::{self, Command},
 };
@@ -20,14 +22,14 @@ use {
     windows_registry::{Key, Value, CURRENT_USER},
 };
 
-#[cfg(target_os = "linux")]
-use crate::linux::Desktop;
 use crate::{
     config::{AUTOSTART_DIR, CONFIG, CONFIG_DIR, EXECUTABLE_DIR, TROJAN_CONFIG_FILE_PATH},
-    error::{Error, HunterResult},
+    error::HunterResult,
     node::ServerNode,
     utils::execute::{execute, new_command},
 };
+#[cfg(target_os = "linux")]
+use {crate::error::Error, crate::linux::Desktop};
 
 #[cfg(not(target_os = "windows"))]
 pub const EXECUTABLE_FILE: &str = "trojan-go";
