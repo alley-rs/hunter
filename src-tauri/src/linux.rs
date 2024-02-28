@@ -1,6 +1,15 @@
+use std::env;
+
 use tracing::trace;
 
 use crate::{error::HunterResult, utils::execute::execute};
+
+pub fn get_desktop_from_env() -> HunterResult<String> {
+    env::var("XDG_SESSION_DESKTOP").map_err(|e| {
+        error!(message = "获取桌面环境变量时出错", error = ?e);
+        Error::Other(e.to_string())
+    })?;
+}
 
 #[derive(Debug, Clone)]
 pub enum Desktop {
@@ -20,10 +29,10 @@ impl Desktop {
                 "--key",
                 "ProxyType",
             ],
-            "get proxy type",
+            "获取代理类型",
         )?;
 
-        trace!("read_proxy_type result: {}", proxy_type);
+        info!(message = "代理类型", type = proxy_type);
 
         if proxy_type != "2" {
             return Ok(None);
@@ -39,7 +48,7 @@ impl Desktop {
                 "--key",
                 "Proxy Config Script",
             ],
-            "get Proxy Config Script",
+            "获取自动代理脚本",
         )?;
 
         Ok(Some((proxy_type, proxy_config_script)))
@@ -49,7 +58,7 @@ impl Desktop {
         let mode = execute(
             "gsettings",
             vec!["get", "org.gnome.system.proxy", "mode"],
-            "read proxy config mode",
+            "获取代理模式",
         )?;
 
         if mode != "auto" {
@@ -59,7 +68,7 @@ impl Desktop {
         let url = execute(
             "gsettings",
             vec!["get", "org.gnome.system.proxy", "autoconfig-url"],
-            "read proxy auto config url",
+            "获取自动代理脚本",
         )?;
 
         Ok(Some((mode, url)))
@@ -84,8 +93,9 @@ impl Desktop {
                 "ProxyType",
                 "2",
             ],
-            "set proxy type",
+            "设置代理类型",
         )?;
+
         execute(
             "kwriteconfig5",
             vec![
@@ -97,7 +107,7 @@ impl Desktop {
                 "Proxy Config Script",
                 pac,
             ],
-            "set proxy config script",
+            "设置自动代理脚本",
         )?;
 
         Ok(())
@@ -107,13 +117,13 @@ impl Desktop {
         execute(
             "gsettings",
             vec!["set", "org.gnome.system.proxy", "mode", "auto"],
-            "set proxy config mode",
+            "设置代理模式",
         )?;
 
         execute(
             "gsettings",
             vec!["set", "org.gnome.system.proxy", "autoconfig-url", pac],
-            "set proxy auto config url",
+            "设置自动代理脚本",
         )?;
 
         Ok(())
@@ -138,7 +148,7 @@ impl Desktop {
                 "ProxyType",
                 "0",
             ],
-            "set proxy type",
+            "设置代理类型",
         )?;
 
         Ok(())
@@ -148,7 +158,7 @@ impl Desktop {
         execute(
             "gsettings",
             vec!["set", "org.gnome.system.proxy", "mode", "none"],
-            "set proxy config mode",
+            "设置代理模式",
         )?;
 
         Ok(())

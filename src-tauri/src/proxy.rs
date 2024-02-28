@@ -1,6 +1,6 @@
 #[cfg(target_os = "linux")]
 use std::env;
-#[cfg(target_os = "macos")]
+#[cfg(not(target_os = "windows"))]
 use std::process::exit;
 use std::{
     fs,
@@ -13,17 +13,17 @@ use regex::Regex;
 use serde::Serialize;
 use sysinfo::System;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info, trace, warn};
 #[cfg(target_os = "windows")]
 use windows_registry::{Key, Value, CURRENT_USER};
 
 #[cfg(not(target_os = "macos"))]
 use crate::error::Error;
 #[cfg(target_os = "linux")]
-use crate::linux::Desktop;
+use crate::linux::{get_desktop_from_env, Desktop};
 use crate::{
     config::{AUTOSTART_DIR, CONFIG, CONFIG_DIR, EXECUTABLE_DIR, TROJAN_CONFIG_FILE_PATH},
-    error::HunterResult,
+    error::{Error, HunterResult},
     node::ServerNode,
     utils::execute::{execute, new_command},
 };
@@ -41,7 +41,7 @@ fn new_proxy() -> Proxy {
     match Proxy::new() {
         Ok(p) => p,
         Err(e) => {
-            error!("初始化 proxy 错误：{}", e);
+            error!(message = "初始化 proxy 错误：{}", error = ?e);
             process::exit(1);
         }
     }
@@ -87,14 +87,23 @@ pub enum TrojanProcessState {
 impl Proxy {
     pub fn new() -> HunterResult<Self> {
         if !EXECUTABLE_DIR.exists() {
-            info!("hunter 缓存目录不存在, 自动创建: {:?}", *EXECUTABLE_DIR);
-            fs::create_dir(EXECUTABLE_DIR.as_path())?;
+            info!(message = "hunter 缓存目录不存在, 自动创建", dir = ?*EXECUTABLE_DIR);
+            fs::create_dir(EXECUTABLE_DIR.as_path()).map_err(|e| {
+                error!(message = "创建 hunter 缓存目录失败", error = ?e);
+
+                Error::Io(e)
+            })?;
         }
 
         if !CONFIG_DIR.exists() {
-            info!("hunter 配置目录不存在, 自动创建: {:?}", *CONFIG_DIR);
-            fs::create_dir(CONFIG_DIR.as_path())?;
+            info!(message = "hunter 配置目录不存在, 自动创建", dir = ?*CONFIG_DIR);
+            fs::create_dir(CONFIG_DIR.as_path()).map_err(|e| {
+                error!(message = "创建 hunter 配置目录失败", error = ?e);
+
+                Error::Io(e)
+            })?;
         }
+
         let executable_file = EXECUTABLE_DIR.join(EXECUTABLE_FILE);
 
         #[cfg(target_os = "macos")]
@@ -128,11 +137,18 @@ impl Proxy {
 
         #[cfg(target_os = "linux")]
         {
-            let desktop =
-                env::var("XDG_SESSION_DESKTOP").map_err(|e| Error::Other(e.to_string()))?;
+            let var_desktop = get_desktop_from_env()?;
+
+            let desktop = match Desktop::try_from(var_desktop.as_str()) {
+                Ok(d) => d,
+                Err(e) => {
+                    error!(message = "不支持的桌面", error = ?e);
+                    exit(1);
+                }
+            };
 
             Ok(Proxy {
-                desktop: Desktop::try_from(desktop.as_str()).map_err(|e| Error::Other(e))?,
+                desktop,
                 executable_file,
                 auto_start_desktop: AUTOSTART_DIR.join("trojan-go.desktop"),
                 child_id: 0,
@@ -171,8 +187,6 @@ impl Proxy {
     }
 
     pub fn enable_auto_proxy_url(&self, pac: &str) -> HunterResult<()> {
-        debug!("setting pac: {}", pac);
-
         #[cfg(target_os = "macos")]
         execute(
             "networksetup",
@@ -191,6 +205,8 @@ impl Proxy {
 
         #[cfg(target_os = "linux")]
         self.desktop.set_proxy_config(pac)?;
+
+        info!(message = "已设置 pac", url = pac);
 
         Ok(())
     }
@@ -214,6 +230,8 @@ impl Proxy {
 
         #[cfg(target_os = "linux")]
         self.desktop.disable_auto_proxy()?;
+
+        info!("已关闭 pac");
 
         Ok(())
     }
@@ -241,7 +259,7 @@ impl Proxy {
 
         let sys = System::new_all();
         for p in sys.processes_by_exact_name(name) {
-            debug!("获取到进程：{} {:?}", p.pid(), p.cmd());
+            debug!(message = "获取到进程", pid = ?p.pid(), cmd = ?p.cmd());
             state.pid = p.pid().as_u32();
             if p.cmd().len() >= 3 {
                 state.second = p.cmd()[1].clone();
@@ -255,10 +273,10 @@ impl Proxy {
             return Ok(None);
         }
 
-        info!("检测到 trojan-go 进程：{:?}", state);
+        info!(message = "检测到 trojan-go 进程", process_state = ?state);
 
         if state.second != "-config" || Path::new(&state.third) != *TROJAN_CONFIG_FILE_PATH {
-            info!("检测到不是由本程序创建的 trojan 进程");
+            warn!("检测到不是由本程序创建的 trojan 进程");
             return Ok(Some(TrojanProcessState::Other { pid: state.pid }));
         }
 
@@ -310,7 +328,7 @@ impl Proxy {
             "查询设置中的代理状态",
         )?;
 
-        debug!("查询代理状态命令结果：\n{}", output);
+        debug!(message = "查询代理状态命令结果", output = output);
 
         let re = Regex::new(r#"\nEnabled: (.+)"#)?;
         let caps = re.captures(&output);
@@ -319,7 +337,7 @@ impl Proxy {
             let state = caps.get(1).map(|m| m.as_str());
 
             if let Some(state) = state {
-                debug!("代理开启状态：{}", state);
+                debug!(message = "代理开启状态", state = state);
                 return Ok(state != "No");
             }
         }
@@ -351,14 +369,14 @@ impl Proxy {
             _ => unreachable!(),
         };
 
-        debug!("获取到 auto config url: {}", auto_config_url);
+        debug!(message = "获取到 auto config url", url = auto_config_url);
 
         if auto_config_url.len() == 0 {
             info!("自动 pac 未设置");
             return Ok(false);
         }
 
-        info!("自动 pac 已设置：{}", auto_config_url);
+        info!(message = "自动 pac 已设置", url = auto_config_url);
 
         Ok(true)
     }
@@ -371,12 +389,12 @@ impl Proxy {
         trace!("运行 trojan");
 
         let out_log_file = fs::File::create(CONFIG_DIR.join("hunter-out.log")).map_err(|e| {
-            error!("create hunter.log failed: {}", e);
+            error!(message = "创建 hunter.log 失败", error = ?e);
             e
         })?;
         let error_log_file =
             fs::File::create(CONFIG_DIR.join("hunter-error.log")).map_err(|e| {
-                error!("create hunter-error.log failed: {}", e);
+                error!(message = "创建 hunter-error.log 失败", error = ?e);
                 e
             })?;
 
@@ -395,14 +413,17 @@ impl Proxy {
     pub fn execute(&mut self) -> HunterResult<()> {
         let mut cmd = self.execute_command()?;
 
-        let child = cmd.spawn()?;
+        let child = cmd.spawn().map_err(|e| {
+            error!(message = "创建 cmd 进程失败", error = ?e);
+            Error::Io(e)
+        })?;
 
         self.child_id = child.id();
 
         // 默认开启后台驻留
         self.daemon = true;
 
-        info!("已创建 trojan 子进程：{}", self.child_id);
+        info!(message = "已创建 trojan 子进程", pid = self.child_id);
 
         Ok(())
     }
@@ -487,7 +508,10 @@ ws.Run "{} -config {}",0"#,
     pub fn switch_auto_start(&self, current_state: bool) -> HunterResult<()> {
         if current_state {
             debug!("删除开机启动脚本");
-            return Ok(fs::remove_file(&self.auto_start_plist)?);
+            return fs::remove_file(&self.auto_start_plist).map_err(|e| {
+                error!(message = "删除开机启动脚本失败", error = ?e);
+                Error::Io(e)
+            });
         }
 
         let content = format!(
@@ -513,7 +537,10 @@ ws.Run "{} -config {}",0"#,
         );
 
         debug!("添加开机启动脚本");
-        Ok(fs::write(&self.auto_start_plist, content)?)
+        fs::write(&self.auto_start_plist, content).map_err(|e| {
+            error!(message = "创建开机启动脚本失败", error = ?e);
+            Error::Io(e)
+        })
     }
 }
 
@@ -541,7 +568,7 @@ fn get_active_network_service() -> HunterResult<Option<String>> {
         "查看网络服务列表",
     )?;
 
-    debug!("网络服务列表：\n{}", output);
+    debug!(message = "网络服务列表", output = output);
 
     // 解析命令输出，提取当前正在使用的网络服务
     for part in output[60..].split("\n") {
@@ -553,7 +580,7 @@ fn get_active_network_service() -> HunterResult<Option<String>> {
         let router = get_service_info(part)?;
 
         if router.is_some() {
-            debug!("正在使用的网络服务：{}", part);
+            debug!(message = "正在使用的网络服务", part = part);
             return Ok(Some(part.to_string()));
         }
     }
@@ -566,7 +593,7 @@ fn get_service_info(device: &str) -> HunterResult<Option<String>> {
     // 使用网络配置命令获取指定网络服务的详细信息
     let output = execute("networksetup", vec!["-getinfo", device], "查看网络信息")?;
 
-    debug!("{} 网络服务信息：\n{}", device, output);
+    debug!(device = device, message = "网络服务信息", output = output);
 
     let re = Regex::new(r#"\nRouter: (.+)"#)?;
     for caps in re.captures_iter(&output) {
