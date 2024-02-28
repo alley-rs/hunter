@@ -3,9 +3,7 @@ use std::os::windows::process::CommandExt;
 #[cfg(target_os = "macos")]
 use std::process::exit;
 use std::{
-    env,
-    ffi::OsStr,
-    fs,
+    env, fs,
     path::{Path, PathBuf},
     process::{self, Command},
 };
@@ -22,10 +20,13 @@ use {
     windows_registry::{Key, Value, CURRENT_USER},
 };
 
+#[cfg(target_os = "linux")]
+use crate::linux::Desktop;
 use crate::{
     config::{AUTOSTART_DIR, CONFIG, CONFIG_DIR, EXECUTABLE_DIR, TROJAN_CONFIG_FILE_PATH},
     error::{Error, HunterResult},
     node::ServerNode,
+    utils::execute::{execute, new_command},
 };
 
 #[cfg(not(target_os = "windows"))]
@@ -59,178 +60,6 @@ pub struct Proxy {
 
 #[cfg(target_os = "linux")]
 #[derive(Debug, Clone)]
-enum Desktop {
-    KDE,
-    GNOME,
-}
-
-impl Desktop {
-    fn read_kde_proxy_config(&self) -> HunterResult<Option<(String, String)>> {
-        let proxy_type = execute(
-            "kreadconfig5",
-            vec![
-                "--file",
-                "kioslaverc",
-                "--group",
-                "Proxy Settings",
-                "--key",
-                "ProxyType",
-            ],
-            "get proxy type",
-        )?;
-
-        trace!("read_proxy_type result: {}", proxy_type);
-
-        if proxy_type != "2" {
-            return Ok(None);
-        }
-
-        let proxy_config_script = execute(
-            "kreadconfig5",
-            vec![
-                "--file",
-                "kioslaverc",
-                "--group",
-                "Proxy Settings",
-                "--key",
-                "Proxy Config Script",
-            ],
-            "get Proxy Config Script",
-        )?;
-
-        Ok(Some((proxy_type, proxy_config_script)))
-    }
-
-    pub fn read_gnome_proxy_config(&self) -> HunterResult<Option<(String, String)>> {
-        let mode = execute(
-            "gsettings",
-            vec!["get", "org.gnome.system.proxy", "mode"],
-            "read proxy config mode",
-        )?;
-
-        if mode != "auto" {
-            return Ok(None);
-        }
-
-        let url = execute(
-            "gsettings",
-            vec!["get", "org.gnome.system.proxy", "autoconfig-url"],
-            "read proxy auto config url",
-        )?;
-
-        Ok(Some((mode, url)))
-    }
-
-    fn read_proxy_config(&self) -> HunterResult<Option<(String, String)>> {
-        match self {
-            Desktop::KDE => self.read_kde_proxy_config(),
-            Desktop::GNOME => self.read_gnome_proxy_config(),
-        }
-    }
-
-    fn set_kde_proxy_config(&self, pac: &str) -> HunterResult<()> {
-        execute(
-            "kwriteconfig5",
-            vec![
-                "--file",
-                "kioslaverc",
-                "--group",
-                "Proxy Settings",
-                "--key",
-                "ProxyType",
-                "2",
-            ],
-            "set proxy type",
-        )?;
-        execute(
-            "kwriteconfig5",
-            vec![
-                "--file",
-                "kioslaverc",
-                "--group",
-                "Proxy Settings",
-                "--key",
-                "Proxy Config Script",
-                pac,
-            ],
-            "set proxy config script",
-        )?;
-
-        Ok(())
-    }
-
-    fn set_gnome_proxy_config(&self, pac: &str) -> HunterResult<()> {
-        execute(
-            "gsettings",
-            vec!["set", "org.gnome.system.proxy", "mode", "auto"],
-            "set proxy config mode",
-        )?;
-
-        execute(
-            "gsettings",
-            vec!["set", "org.gnome.system.proxy", "autoconfig-url", pac],
-            "set proxy auto config url",
-        )?;
-
-        Ok(())
-    }
-
-    fn set_proxy_config(&self, pac: &str) -> HunterResult<()> {
-        match self {
-            Desktop::KDE => self.set_kde_proxy_config(pac),
-            Desktop::GNOME => self.set_gnome_proxy_config(pac),
-        }
-    }
-
-    fn disable_kde_auto_proxy(&self) -> HunterResult<()> {
-        execute(
-            "kwriteconfig5",
-            vec![
-                "--file",
-                "kioslaverc",
-                "--group",
-                "Proxy Settings",
-                "--key",
-                "ProxyType",
-                "0",
-            ],
-            "set proxy type",
-        )?;
-
-        Ok(())
-    }
-
-    fn disable_gnome_auto_proxy(&self) -> HunterResult<()> {
-        execute(
-            "gsettings",
-            vec!["set", "org.gnome.system.proxy", "mode", "none"],
-            "set proxy config mode",
-        )?;
-
-        Ok(())
-    }
-
-    fn disable_auto_proxy(&self) -> HunterResult<()> {
-        match self {
-            Desktop::KDE => self.disable_kde_auto_proxy(),
-            Desktop::GNOME => self.disable_gnome_auto_proxy(),
-        }
-    }
-}
-
-impl TryFrom<&str> for Desktop {
-    type Error = String;
-    fn try_from(value: &str) -> std::result::Result<Self, String> {
-        match value {
-            "KDE" => Ok(Desktop::KDE),
-            "GNOME" => Ok(Desktop::GNOME),
-            _ => Err(format!("unkown desktop: {}", value)),
-        }
-    }
-}
-
-#[cfg(target_os = "linux")]
-#[derive(Debug, Clone)]
 pub struct Proxy {
     desktop: Desktop,
     pub executable_file: PathBuf,
@@ -258,61 +87,6 @@ fn gbk_to_utf8(bytes: &[u8]) -> HunterResult<String> {
         .map_err(|e| Error::Other(e.to_string()))?;
 
     Ok(decoded)
-}
-
-fn new_command<C, A, AS>(cmd: C, args: AS, #[cfg(debug_assertions)] log_desc: &str) -> Command
-where
-    C: AsRef<OsStr>,
-    A: AsRef<OsStr>,
-    AS: IntoIterator<Item = A>,
-{
-    let mut cmd = Command::new(cmd);
-
-    cmd.args(args);
-
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
-
-    #[cfg(debug_assertions)]
-    {
-        debug!("命令({})：{:?}", log_desc, cmd);
-    }
-
-    cmd
-}
-
-fn execute<C, A, AS>(cmd: C, args: AS, log_desc: &str) -> HunterResult<String>
-where
-    C: AsRef<OsStr>,
-    A: AsRef<OsStr>,
-    AS: IntoIterator<Item = A>,
-{
-    let mut cmd = new_command(
-        cmd,
-        args,
-        #[cfg(debug_assertions)]
-        log_desc,
-    );
-
-    let output = cmd.output()?;
-
-    if output.status.success() {
-        #[cfg(target_os = "windows")]
-        let result = gbk_to_utf8(&output.stdout)?;
-        #[cfg(not(target_os = "windows"))]
-        let result = String::from_utf8_lossy(&output.stdout);
-
-        return Ok(result.trim().to_owned());
-    }
-
-    #[cfg(target_os = "windows")]
-    let err = gbk_to_utf8(&output.stderr)?;
-    #[cfg(not(target_os = "windows"))]
-    let err = String::from_utf8_lossy(&output.stderr);
-
-    error!("命令({})执行失败：{:?} -> {}", log_desc, cmd, err);
-
-    Err(Error::Command(err.to_string()))
 }
 
 #[derive(Debug, Serialize)]

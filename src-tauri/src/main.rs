@@ -9,6 +9,8 @@ mod node;
 mod proxy;
 mod run_event;
 // mod tray;
+#[cfg(target_os = "linux")]
+mod linux;
 mod utils;
 
 #[macro_use]
