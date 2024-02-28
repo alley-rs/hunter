@@ -1,8 +1,12 @@
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::{ffi::OsStr, process::Command};
 
 #[cfg(debug_assertions)]
 use tracing::debug;
 use tracing::error;
+#[cfg(target_os = "windows")]
+use winapi::um::winbase::CREATE_NO_WINDOW;
 
 use crate::error::{Error, HunterResult};
 
@@ -25,6 +29,18 @@ where
     }
 
     cmd
+}
+
+#[cfg(target_os = "windows")]
+fn gbk_to_utf8(bytes: &[u8]) -> HunterResult<String> {
+    use encoding::all::GBK;
+    use encoding::{DecoderTrap, Encoding};
+
+    let decoded = GBK
+        .decode(bytes, DecoderTrap::Strict)
+        .map_err(|e| Error::Other(e.to_string()))?;
+
+    Ok(decoded)
 }
 
 pub fn execute<C, A, AS>(cmd: C, args: AS, log_desc: &str) -> HunterResult<String>
