@@ -1,8 +1,8 @@
 # hunter
 
-轻量简单的 trojan-go 图形化桌面客户端。
+轻量简单的 trojan-go 跨平台图形化桌面客户端。
 
-仅限 Windows 和 macOS 平台，Linux 桌面生态无统一命令，无法完成对所有 Linux 发行版的统一适配。
+主要适配 Windows 和 macOS 平台，Linux 桌面生态无统一命令，只完成了 KDE 和 Gnome 的适配。
 
 ## 介绍
 
