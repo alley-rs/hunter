@@ -1,5 +1,6 @@
 use serde::{ser::Serializer, Serialize};
 use std::{num::ParseIntError, string::FromUtf8Error};
+use zip::result::ZipError;
 
 pub type HunterResult<T> = std::result::Result<T, Error>;
 
@@ -27,6 +28,11 @@ pub enum Error {
     Toml(String),
     #[error(transparent)]
     SerdeJSON(#[from] serde_json::Error),
+    #[error(transparent)]
+    Zip(#[from] ZipError),
+    #[cfg(target_os = "linux")]
+    #[error(transparent)]
+    Var(#[from] std::env::VarError),
     #[error("{0}")]
     Command(String),
     #[error("{0}")]
@@ -41,5 +47,11 @@ impl Serialize for Error {
         S: Serializer,
     {
         serializer.serialize_str(self.to_string().as_ref())
+    }
+}
+
+impl Into<Error> for &str {
+    fn into(self) -> Error {
+        Error::Other(self.to_string())
     }
 }

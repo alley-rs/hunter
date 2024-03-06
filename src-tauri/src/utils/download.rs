@@ -23,7 +23,10 @@ pub async fn download<R: Runtime, P: AsRef<Path>, U: IntoUrl>(
     headers: HashMap<&str, &str>,
 ) -> HunterResult<u32> {
     let builder = reqwest::Client::builder();
-    let client = builder.https_only(true).build()?;
+    let client = builder.https_only(true).build().map_err(|e| {
+        error!(message = "创建 request client 失败", error = ?e);
+        e
+    })?;
 
     let mut request = client.get(url);
     // Loop trought the headers keys and values
@@ -35,7 +38,11 @@ pub async fn download<R: Runtime, P: AsRef<Path>, U: IntoUrl>(
     let response = request.send().await?;
     let total = response.content_length().unwrap_or(0);
 
-    let mut file = File::create(file_path).await?;
+    let mut file = File::create(file_path).await.map_err(|e| {
+        error!(message = "创建下载文件失败", error = ?e);
+        e
+    })?;
+
     let mut stream = response.bytes_stream();
 
     let mut downloaded_len: u64 = 0;

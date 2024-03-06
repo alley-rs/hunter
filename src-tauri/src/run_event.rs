@@ -1,5 +1,4 @@
-use tauri::{AppHandle, RunEvent};
-use tracing::{error, info};
+use tauri::{AppHandle, RunEvent, UpdaterEvent};
 
 use crate::{
     config::{write_config_file, CONFIG},
@@ -8,14 +7,50 @@ use crate::{
 
 pub fn handle_run_event(_app_handle: &AppHandle, event: RunEvent) {
     match event {
+        tauri::RunEvent::Updater(e) => match e {
+            UpdaterEvent::UpdateAvailable {
+                body,
+                date,
+                version,
+            } => {
+                info!(
+                    message = "版本有更新",
+                    body = body,
+                    date = ?date,
+                    version = version
+                );
+            }
+            UpdaterEvent::Pending => {
+                info!("准备下载新版本");
+            }
+            UpdaterEvent::DownloadProgress {
+                chunk_length,
+                content_length,
+            } => {
+                trace!("正在下载: {}/{:?}", chunk_length, content_length);
+            }
+            UpdaterEvent::Downloaded => {
+                info!("新版本已下载");
+            }
+            UpdaterEvent::Updated => {
+                info!("更新完成");
+            }
+            UpdaterEvent::AlreadyUpToDate => {
+                info!("当前已是最新版本");
+            }
+            UpdaterEvent::Error(error) => {
+                error!(message = "更新失败", error = error);
+            }
+        },
         tauri::RunEvent::Exit => {
             tokio::task::block_in_place(|| {
                 tauri::async_runtime::block_on(async move {
                     let config = CONFIG.read().await;
                     if let Err(e) = write_config_file(&config).await {
-                        error!("写配置文件时出错：{}", e);
+                        error!(message = "写配置文件时出错", error = ?e);
+                        return;
                     };
-                    info!("配置文件已更新 config: {:?}", config);
+                    info!(message = "配置文件已更新", config = ?config);
 
                     let proxy = PROXY.read().await;
 

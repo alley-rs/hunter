@@ -5,7 +5,6 @@ pub mod unzip;
 
 use reqwest::{Client, Proxy};
 use std::time::{Duration, Instant};
-use tracing::{debug, info, trace};
 
 use crate::{
     config::CONFIG,
@@ -17,8 +16,15 @@ pub async fn check_proxy(duration: Duration) -> HunterResult<f64> {
     let config = CONFIG.read().await;
 
     let retries = 3;
-    let proxy = Proxy::all(config.local_socks5_addr())?;
-    let client = Client::builder().proxy(proxy).build()?;
+    let proxy = Proxy::all(config.local_socks5_addr()).map_err(|e| {
+        error!(message = "创建代理失败", error = ?e);
+        e
+    })?;
+
+    let client = Client::builder().proxy(proxy).build().map_err(|e| {
+        error!(message = "创建 reqwest client 失败", error =?e);
+        e
+    })?;
 
     let start = Instant::now();
 
@@ -33,15 +39,16 @@ pub async fn check_proxy(duration: Duration) -> HunterResult<f64> {
             Ok(r) => {
                 let cost = start.elapsed();
                 debug!(
-                    "状态码：{} 响应头：{:?} 耗时：{:?}",
-                    &r.status(),
-                    &r.headers(),
-                    cost
+                    status = ?&r.status(),
+                    headers = ?&r.headers(),
+                    duration = ?cost
                 );
+
                 return Ok(cost.as_secs_f64());
             }
             Err(e) => {
                 if i == retries - 1 {
+                    error!(message = "已请求 google 3 次均失败", error = ?e);
                     return Err(Error::Request(e));
                 }
             }

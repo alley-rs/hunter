@@ -2,9 +2,6 @@
 use std::os::windows::process::CommandExt;
 use std::{ffi::OsStr, process::Command};
 
-#[cfg(debug_assertions)]
-use tracing::debug;
-use tracing::error;
 #[cfg(target_os = "windows")]
 use winapi::um::winbase::CREATE_NO_WINDOW;
 
@@ -56,7 +53,10 @@ where
         log_desc,
     );
 
-    let output = cmd.output()?;
+    let output = cmd.output().map_err(|e| {
+        error!(message = "获取命令输出失败", error = ?e);
+        e
+    })?;
 
     if output.status.success() {
         #[cfg(target_os = "windows")]

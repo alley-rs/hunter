@@ -4,7 +4,6 @@
 mod config;
 // mod consts;
 mod error;
-// mod logger;
 mod node;
 mod proxy;
 mod run_event;
@@ -15,6 +14,8 @@ mod utils;
 
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate tracing;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -25,7 +26,7 @@ use proxy::TrojanProcessState;
 use tauri::utils::platform::target_triple;
 use tauri::AppHandle;
 use time::macros::{format_description, offset};
-use tracing::{debug, error, info, trace, Level};
+use tracing::Level;
 use tracing_subscriber::fmt::time::OffsetTime;
 use url::Url;
 
@@ -120,7 +121,7 @@ async fn check_executable_file() -> bool {
     let proxy = PROXY.read().await;
     let exists = proxy.check_executable_file();
 
-    info!("trojan 可执行文件状态：{}", exists);
+    info!(message = "trojan 可执行文件状态", exists = exists);
 
     exists
 }
@@ -140,7 +141,7 @@ async fn check_network_connectivity() -> HunterResult<f64> {
             Ok(s)
         }
         Err(e) => {
-            error!("网络连接异常: {}", e);
+            error!(mesage = "网络连接异常", error = ?e);
             Err(e)
         }
     }
@@ -208,7 +209,7 @@ async fn change_server_node(_handle: AppHandle, name: &str) -> HunterResult<()> 
     //     }
     // }
 
-    info!("服务器已切换：{}", name);
+    info!(message = "服务器已切换", server_node_name = name);
 
     Ok(())
 }
@@ -246,10 +247,10 @@ async fn switch_auto_start(current_state: bool) -> HunterResult<()> {
 }
 
 #[tauri::command]
-async fn unzip(zip: Zip) {
-    debug!("解压的文件信息: {}", zip);
+async fn unzip(zip: Zip) -> HunterResult<()> {
+    debug!(message = "解压文件", zip = ?zip);
 
-    zip.extract(true);
+    zip.extract(true)
 }
 
 #[tauri::command]
@@ -270,7 +271,7 @@ async fn update_local_addr(addr: &str) -> HunterResult<()> {
     trace!("update - local_addr");
     let mut config = CONFIG.write().await;
     config.set_local_addr(addr);
-    info!("updated - local_addr={}", addr);
+    info!(message = "updated", local_addr = addr);
 
     Ok(())
 }
@@ -280,7 +281,7 @@ async fn update_local_port(port: u16) -> HunterResult<()> {
     trace!("update - local_port");
     let mut config = CONFIG.write().await;
     config.set_local_port(port);
-    info!("updated - local_port={}", port);
+    info!(message = "updated", local_port = port);
 
     Ok(())
 }
@@ -290,7 +291,7 @@ async fn update_pac(pac: &str) -> HunterResult<()> {
     trace!("update - pac");
     let mut config = CONFIG.write().await;
     config.set_pac(pac);
-    info!("updated - pac={}", pac);
+    info!(message = "updated", pac = pac);
 
     Ok(())
 }
@@ -300,7 +301,7 @@ async fn add_server_node(server_node: ServerNode) {
     trace!("add - new server node");
     let mut config = CONFIG.write().await;
     config.add_server_node(&server_node);
-    info!("added - server_node={:?}", server_node);
+    info!(message = "added",server_node = ?server_node);
 }
 
 #[tauri::command]
@@ -308,7 +309,7 @@ async fn update_server_node(index: usize, server_node: ServerNode) {
     trace!("update - server node");
     let mut config = CONFIG.write().await;
     config.update_server_node(index, server_node);
-    info!("updated - server_node={}", index);
+    info!(message = "updated", server_node_index = index);
 }
 
 #[tauri::command]
@@ -324,7 +325,10 @@ async fn write_trojan_config(server_node: ServerNode) -> HunterResult<()> {
     let config = CONFIG.read().await;
     config.write_trojan_config_file(&server_node).await?;
 
-    info!("trojan 配置文件写入新的节点：{}", server_node.name());
+    info!(
+        message = "trojan 配置文件写入新的节点",
+        server_node_name = server_node.name()
+    );
     Ok(())
 }
 
@@ -392,14 +396,16 @@ async fn main() -> HunterResult<()> {
 
     trace!("获取系统信息");
     let platform = target_triple().map_err(|e| {
-        error!("获取系统信息时失败: {}", e);
+        error!(message = "获取系统信息时失败", error = ?e);
         Error::Other(e.to_string())
     })?;
-    info!("系统: {}", platform);
+    info!("平台和架构: {}", platform);
 
     info!(
-        "using dirs: {:?} {:?} {:?}",
-        *EXECUTABLE_DIR, *CONFIG_DIR, *AUTOSTART_DIR
+        message =  "使用的目录",
+        executable_dir = ?*EXECUTABLE_DIR,
+        config_dir =  ?*CONFIG_DIR,
+        autostart_dir =   ?*AUTOSTART_DIR
     );
 
     trace!("初始化 tauri");
@@ -436,7 +442,7 @@ async fn main() -> HunterResult<()> {
         ])
         .build(tauri::generate_context!())
         .map_err(|e| {
-            error!("创建 app 失败：{}", e);
+            error!(message = "创建 app 失败", error = ?e);
             e
         })?
         .run(handle_run_event);
