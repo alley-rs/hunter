@@ -1,5 +1,3 @@
-#[cfg(target_os = "linux")]
-use std::env;
 #[cfg(not(target_os = "windows"))]
 use std::process::exit;
 use std::{
@@ -13,12 +11,9 @@ use regex::Regex;
 use serde::Serialize;
 use sysinfo::System;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, trace, warn};
 #[cfg(target_os = "windows")]
 use windows_registry::{Key, Value, CURRENT_USER};
 
-#[cfg(not(target_os = "macos"))]
-use crate::error::Error;
 #[cfg(target_os = "linux")]
 use crate::linux::{get_desktop_from_env, Desktop};
 use crate::{

@@ -1,14 +1,12 @@
 use std::env;
 
-use tracing::trace;
-
 use crate::{error::HunterResult, utils::execute::execute};
 
 pub fn get_desktop_from_env() -> HunterResult<String> {
     env::var("XDG_SESSION_DESKTOP").map_err(|e| {
         error!(message = "获取桌面环境变量时出错", error = ?e);
-        Error::Other(e.to_string())
-    })?;
+        e.into()
+    })
 }
 
 #[derive(Debug, Clone)]
@@ -32,7 +30,7 @@ impl Desktop {
             "获取代理类型",
         )?;
 
-        info!(message = "代理类型", type = proxy_type);
+        info!(message = "代理类型", r#type = proxy_type);
 
         if proxy_type != "2" {
             return Ok(None);
