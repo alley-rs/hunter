@@ -4,7 +4,6 @@ use std::process::exit;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tokio::sync::RwLock;
-use tracing::{error, info, warn};
 
 use crate::error::{Error, HunterResult};
 use crate::node::ServerNode;

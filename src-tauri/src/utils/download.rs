@@ -5,7 +5,6 @@ use serde::Serialize;
 use std::{collections::HashMap, path::Path};
 use tauri::{Runtime, Window};
 use tokio::{fs::File, io::AsyncWriteExt};
-use tracing::error;
 
 pub const DOWNLOAD_EVENT: &str = "download://progress";
 

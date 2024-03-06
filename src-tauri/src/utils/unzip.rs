@@ -1,15 +1,15 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use std::path::Path;
 use std::{
     fs::{create_dir_all, remove_file, File},
     io,
     path::PathBuf,
 };
-use tracing::{debug, error, trace, warn};
 use zip::ZipArchive;
 
 use crate::config::EXECUTABLE_DIR;
-use crate::error::{Error, HunterResult};
+use crate::error::HunterResult;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Zip {
@@ -31,30 +31,32 @@ impl Display for Zip {
 }
 
 impl Zip {
+    fn get_parent_dir(&self) -> &Path {
+        let parent = match self.file_path.parent() {
+            Some(p) => p,
+            None => {
+                warn!(
+                    message = "用户选择的保存目录不存在，使用默认缓存目录",
+                    default_dir = ?*EXECUTABLE_DIR
+                );
+
+                &EXECUTABLE_DIR
+            }
+        };
+        debug!(
+            message = "使用 file_path 的父目录作为 target_dir",
+           dir = ?parent
+        );
+        parent
+    }
+
     pub fn extract(&self, remove: bool) -> HunterResult<()> {
         let target_dir = match &self.target_dir {
             Some(d) => {
                 debug!(message = "使用传入的 target_dir", dir = ?d);
                 &d
             }
-            None => {
-                let parent = match self.file_path.parent() {
-                    Some(p) => p,
-                    None => {
-                        warn!(
-                            message = "用户选择的保存目录不存在，使用默认缓存目录",
-                            default_dir = ?*EXECUTABLE_DIR
-                        );
-
-                        &EXECUTABLE_DIR
-                    }
-                };
-                debug!(
-                    message = "使用 file_path 的父目录作为 target_dir",
-                   dir = ?parent
-                );
-                parent
-            }
+            None => self.get_parent_dir(),
         };
 
         let file = File::open(&self.file_path).map_err(|e| {
@@ -64,13 +66,13 @@ impl Zip {
 
         let mut archive = ZipArchive::new(file).map_err(|e| {
             error!(message = "创建 zip 失败", error = ?e);
-            Error::Other(e.to_string())
+            e
         })?;
 
         for i in 0..archive.len() {
             let mut file = archive.by_index(i).map_err(|e| {
                 error!(message = "获取压缩包的文件失败",index = i, error = ?e);
-                Error::Other(e.to_string())
+                e
             })?;
 
             let mut outpath = match file.enclosed_name() {
@@ -88,12 +90,12 @@ impl Zip {
 
             outpath = target_dir.join(outpath);
 
-            debug!(dir = ?target_dir, outpath = ?outpath);
+            debug!(message = "解压一个文件", dir = ?target_dir, outpath = ?outpath);
 
             {
                 let comment = file.comment();
                 if !comment.is_empty() {
-                    trace!("File {i} comment: {comment}");
+                    trace!(message = "文件存在注释", comment = comment);
                 }
             }
 
@@ -105,10 +107,10 @@ impl Zip {
                 })?;
             } else {
                 trace!(
-                    "File {} extracted to \"{}\" ({} bytes)",
-                    i,
-                    outpath.display(),
-                    file.size()
+                    message = "解压文件",
+                    index = i,
+                    path = ?outpath,
+                    size = file.size()
                 );
                 if let Some(p) = outpath.parent() {
                     if !p.exists() {
@@ -136,6 +138,7 @@ impl Zip {
                 use std::os::unix::prelude::PermissionsExt;
 
                 if let Some(mode) = file.unix_mode() {
+                    info!(message = "设置文件权限", mode = mode, path = ?outpath);
                     set_permissions(&outpath, PermissionsExt::from_mode(mode)).map_err(|e| {
                         error!(message = "设置文件权限失败", error = ?e);
                         e
@@ -149,6 +152,7 @@ impl Zip {
                 error!(message = "删除压缩包失败", error = ?e, file_path = ?self.file_path);
                 e
             })?;
+            info!(message = "已删除压缩包", path = ?self.file_path);
         }
 
         Ok(())

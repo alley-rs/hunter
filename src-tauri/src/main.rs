@@ -14,6 +14,8 @@ mod utils;
 
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate tracing;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -24,7 +26,7 @@ use proxy::TrojanProcessState;
 use tauri::utils::platform::target_triple;
 use tauri::AppHandle;
 use time::macros::{format_description, offset};
-use tracing::{debug, error, info, trace, Level};
+use tracing::Level;
 use tracing_subscriber::fmt::time::OffsetTime;
 use url::Url;
 

@@ -5,7 +5,6 @@ pub mod unzip;
 
 use reqwest::{Client, Proxy};
 use std::time::{Duration, Instant};
-use tracing::{debug, error, info, trace};
 
 use crate::{
     config::CONFIG,
