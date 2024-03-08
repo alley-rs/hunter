@@ -29,7 +29,7 @@ import {
   LazySwitch,
   LazyTooltip,
   LazySpace,
-} from '~/components';
+} from '~/lazy';
 import { checkExecutableFile, deepEqual } from '~/lib';
 import { AppContext } from '../context';
 
@@ -93,9 +93,9 @@ const SwitchServerNode = (props: SwitchServerNodeProps) => {
 interface TooltipActionProps {
   index: number;
   action:
-  | Omit<BaseTableActionColumn, 'onClick'>
-  | Omit<EditTableActionColumn['edited'], 'onClick'>
-  | EditTableActionColumn['editing'];
+    | Omit<BaseTableActionColumn, 'onClick'>
+    | Omit<EditTableActionColumn['edited'], 'onClick'>
+    | EditTableActionColumn['editing'];
   onClick: () => void;
   icon: JSXElement;
   disabled?: boolean;
@@ -272,7 +272,7 @@ const TableEditableRow = (props: TableEditableRowProps) => {
             >
               <InputCell
                 index={index()}
-                value={props.record[key] as string | number}
+                value={value()[key] as string | number}
                 onChange={(v) => setValue((prev) => ({ ...prev, [key]: v }))}
               />
             </Show>

@@ -1,7 +1,7 @@
 import { Show, createEffect, createResource, createSignal } from 'solid-js';
 import '~/App.scss';
-import { LazyRow } from '~/components';
 import { getAutostartState, getConfig, getProxyDaemon } from './lib';
+import { LazyRow } from '~/lazy';
 import LocalAddr from './app/local-addr';
 import LocalPort from './app/local-port';
 import DarkSwitch from './app/darkSwitch';

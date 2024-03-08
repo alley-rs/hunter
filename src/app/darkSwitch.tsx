@@ -1,6 +1,6 @@
 import { BiRegularSun, BiSolidMoon } from 'solid-icons/bi';
-import { LazyCol, LazySwitch, LazyTooltip } from '~/components';
-import useDark from './hooks/useDark';
+import { LazyCol, LazySwitch, LazyTooltip } from '~/lazy';
+import useDark from 'alley-components/lib/hooks/useDark';
 
 const DarkSwitch = () => {
   const [isDark, setIsDark] = useDark();

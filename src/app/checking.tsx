@@ -1,5 +1,5 @@
 import { Show } from 'solid-js';
-import { LazySpinner } from '~/components';
+import { LazySpinner } from '~/lazy';
 
 interface CheckingProps {
   show?: boolean;

@@ -1,6 +1,6 @@
 import { AiOutlineCheck } from 'solid-icons/ai';
 import { createSignal } from 'solid-js';
-import { LazyButton, LazyInput, LazySpaceCompact } from '~/components';
+import { LazyButton, LazyInput, LazySpaceCompact } from '~/lazy';
 import { updatePac } from '~/lib';
 
 interface PacProps {
