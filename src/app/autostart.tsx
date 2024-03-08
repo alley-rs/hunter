@@ -1,6 +1,6 @@
 import { createMemo, useContext } from 'solid-js';
 import { BiRegularCheck, BiRegularX } from 'solid-icons/bi';
-import { LazyCol, LazySwitch, LazyTooltip } from '~/components';
+import { LazyCol, LazySwitch, LazyTooltip } from '~/lazy';
 import { AppContext } from './context';
 import { switchAutoStart } from '~/lib';
 

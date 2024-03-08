@@ -7,7 +7,7 @@ import {
   LazySpace,
   LazySwitch,
   LazyTooltip,
-} from '~/components';
+} from '~/lazy';
 import { checkNetworkConnectivity, turnOffProxy, turnOnProxy } from '~/lib';
 import Pac from './pac';
 import notify from '~/lib/notify';

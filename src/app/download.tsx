@@ -1,6 +1,6 @@
 import { appWindow } from '@tauri-apps/api/window';
 import { createSignal, onMount, useContext } from 'solid-js';
-import { LazyCircleProgress } from '~/components';
+import { LazyCircleProgress } from '~/lazy';
 import { downloadExecutableFile, getExecutableFile, unzip } from '~/lib';
 import notify from '~/lib/notify';
 import { AppContext } from './context';
