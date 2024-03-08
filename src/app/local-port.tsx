@@ -1,11 +1,6 @@
 import { createSignal } from 'solid-js';
 import { AiOutlineCheck } from 'solid-icons/ai';
-import {
-  LazyButton,
-  LazyCol,
-  LazyInputNumber,
-  LazySpaceCompact,
-} from '~/components';
+import { LazyButton, LazyCol, LazyInputNumber, LazySpaceCompact } from '~/lazy';
 import { updateLocalPort } from '~/lib';
 
 interface LocalPortProps {

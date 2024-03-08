@@ -1,7 +1,7 @@
 import { For, Show, mergeProps } from 'solid-js';
-import { addClassNames } from '~/components/utils';
+import { addClassNames } from 'alley-components';
 import './index.scss';
-import { LazyEmpty } from '~/components';
+import { LazyEmpty } from '~/lazy';
 import { TableProps } from './interface';
 import TableEditableRow from './editable-row';
 
@@ -35,11 +35,11 @@ const Table = (props: TableProps) => {
                     style={
                       item.width
                         ? {
-                          width:
-                            typeof item.width === 'string'
-                              ? item.width
-                              : `${item.width}px`,
-                        }
+                            width:
+                              typeof item.width === 'string'
+                                ? item.width
+                                : `${item.width}px`,
+                          }
                         : undefined
                     }
                   />
@@ -52,9 +52,9 @@ const Table = (props: TableProps) => {
                   each={
                     merged.actions
                       ? [
-                        ...merged.columns,
-                        { title: '操作', width: undefined, class: undefined },
-                      ]
+                          ...merged.columns,
+                          { title: '操作', width: undefined, class: undefined },
+                        ]
                       : merged.columns
                   }
                 >

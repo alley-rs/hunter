@@ -1,6 +1,6 @@
 import { BiRegularCheck, BiRegularX } from 'solid-icons/bi';
 import { useContext } from 'solid-js';
-import { LazyCol, LazySwitch, LazyTooltip } from '~/components';
+import { LazyCol, LazySwitch, LazyTooltip } from '~/lazy';
 import { switchDaemon } from '~/lib';
 import { AppContext } from './context';
 
