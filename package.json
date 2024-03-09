@@ -15,7 +15,7 @@
   "type": "module",
   "dependencies": {
     "@tauri-apps/api": "^1.5.3",
-    "alley-components": "^0.0.7",
+    "alley-components": "^0.0.9",
     "solid-icons": "^1.1.0",
     "solid-js": "^1.8.15"
   },
