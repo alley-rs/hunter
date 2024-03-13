@@ -15,21 +15,21 @@
   "type": "module",
   "dependencies": {
     "@tauri-apps/api": "^1.5.3",
-    "alley-components": "^0.0.9",
+    "alley-components": "^0.1.2",
     "solid-icons": "^1.1.0",
     "solid-js": "^1.8.15"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1.5.10",
-    "@types/node": "^20.11.20",
-    "@typescript-eslint/eslint-plugin": "^7.0.2",
-    "@typescript-eslint/parser": "^7.0.2",
+    "@tauri-apps/cli": "^1.5.11",
+    "@types/node": "^20.11.26",
+    "@typescript-eslint/eslint-plugin": "^7.2.0",
+    "@typescript-eslint/parser": "^7.2.0",
     "cross-env": "^7.0.3",
     "sass": "^1.71.1",
     "stylelint": "^16.2.1",
-    "stylelint-scss": "^6.1.0",
-    "typescript": "^5.3.3",
-    "vite": "^5.1.4",
+    "stylelint-scss": "^6.2.1",
+    "typescript": "^5.4.2",
+    "vite": "^5.1.6",
     "vite-plugin-solid": "^2.10.1"
   }
 }
