@@ -6,12 +6,14 @@ import {
   LazyFlex,
   LazySpace,
   LazySwitch,
+  LazyToast,
   LazyTooltip,
 } from '~/lazy';
 import { checkNetworkConnectivity, turnOffProxy, turnOnProxy } from '~/lib';
 import Pac from './pac';
 import notify from '~/lib/notify';
 import { TableContext } from './context';
+import { AlertProps } from 'alley-components';
 
 interface ServerNodesTableFooterProps {
   addNewServerNode: () => void;
@@ -24,6 +26,10 @@ const ServerNodesTableFooter = (props: ServerNodesTableFooterProps) => {
   const { runningServerNode, proxyState } = useContext(TableContext)!;
 
   const [checkingConnect, setCheckingConnect] = createSignal(false);
+  const [connectState, setConnectState] = createSignal<{
+    type: AlertProps['type'];
+    message: AlertProps['message'];
+  } | null>(null);
 
   const handleSwitchProxy = async (value: boolean) => {
     if (value) {
@@ -43,14 +49,15 @@ const ServerNodesTableFooter = (props: ServerNodesTableFooterProps) => {
       const cost = await checkNetworkConnectivity();
       const costFormatted =
         cost > 1 ? cost.toFixed(1) + 's' : Math.round(cost * 1000) + 'ms';
-      await notify({
-        title: 'hunter 网络检测',
-        body: `网络已连通，访问谷歌用时：${costFormatted}`,
+
+      setConnectState({
+        type: 'success',
+        message: `网络已连通，访问谷歌用时：${costFormatted}`,
       });
     } catch (e) {
-      await notify({
-        title: 'hunter 网络检测失败',
-        body: String(e),
+      setConnectState({
+        type: 'error',
+        message: String(e),
       });
     } finally {
       setCheckingConnect(false);
@@ -59,6 +66,17 @@ const ServerNodesTableFooter = (props: ServerNodesTableFooterProps) => {
 
   return (
     <LazyFlex justify="between" align="center">
+      <LazyToast
+        open={connectState() !== null}
+        placement="bottom"
+        onClose={() => setConnectState(null)}
+        alert={{
+          type: connectState()?.type ?? 'success',
+          showIcon: true,
+          message: connectState()?.message,
+        }}
+      />
+
       <LazyTooltip
         text="检测代理是否有效。发起一个真正的网络请求并计算整个过程的耗时。"
         placement="bottom"
