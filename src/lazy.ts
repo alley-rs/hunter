@@ -41,3 +41,6 @@ export const LazySpaceCompact = lazy(
 export const LazySpinner = lazy(
   () => import('alley-components/lib/components/spinner'),
 );
+export const LazyToast = lazy(
+  () => import('alley-components/lib/components/toast'),
+);
