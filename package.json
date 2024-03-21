@@ -17,19 +17,19 @@
     "@tauri-apps/api": "^1.5.3",
     "alley-components": "^0.1.4",
     "solid-icons": "^1.1.0",
-    "solid-js": "^1.8.15"
+    "solid-js": "^1.8.16"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^1.5.11",
-    "@types/node": "^20.11.27",
-    "@typescript-eslint/eslint-plugin": "^7.2.0",
-    "@typescript-eslint/parser": "^7.2.0",
+    "@types/node": "^20.11.30",
+    "@typescript-eslint/eslint-plugin": "^7.3.1",
+    "@typescript-eslint/parser": "^7.3.1",
     "cross-env": "^7.0.3",
     "sass": "^1.72.0",
     "stylelint": "^16.2.1",
     "stylelint-scss": "^6.2.1",
-    "typescript": "^5.4.2",
-    "vite": "^5.1.6",
-    "vite-plugin-solid": "^2.10.1"
+    "typescript": "^5.4.3",
+    "vite": "^5.2.2",
+    "vite-plugin-solid": "^2.10.2"
   }
 }
