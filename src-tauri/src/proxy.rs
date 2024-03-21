@@ -359,7 +359,15 @@ impl Proxy {
     pub fn auto_proxy_url_state(&self) -> HunterResult<bool> {
         let key = self.get_registry_key(false)?;
 
-        let auto_config_url = match key.get_value("AutoConfigURL")? {
+        let value = match key.get_value("AutoConfigURL") {
+            Ok(v) => v,
+            Err(e) => {
+                warn!(message = "获取注册表失败", error = ?e);
+                return Ok(false);
+            }
+        };
+
+        let auto_config_url = match value {
             Value::String(s) => s,
             _ => unreachable!(),
         };
