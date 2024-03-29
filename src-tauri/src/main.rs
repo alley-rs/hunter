@@ -24,7 +24,7 @@ use std::time::Duration;
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use proxy::TrojanProcessState;
 use tauri::utils::platform::target_triple;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use time::macros::{format_description, offset};
 use tracing::Level;
 use tracing_subscriber::fmt::time::OffsetTime;
@@ -410,6 +410,12 @@ async fn main() -> HunterResult<()> {
 
     trace!("初始化 tauri");
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(w) = app.get_window("main") {
+                info!(message = "本程序已有窗口运行，自动聚焦到此窗口");
+                w.set_focus().unwrap();
+            }
+        }))
         // .system_tray(tray)
         // .on_system_tray_event(handle_tray_event)
         .invoke_handler(tauri::generate_handler![
