@@ -1,5 +1,5 @@
 import { AiOutlineCheck } from 'solid-icons/ai';
-import { createSignal } from 'solid-js';
+import { createEffect, createSignal } from 'solid-js';
 import { LazyButton, LazyInput, LazySpaceCompact } from '~/lazy';
 import { updatePac } from '~/lib';
 
@@ -10,12 +10,18 @@ interface PacProps {
 }
 
 const Pac = (props: PacProps) => {
+  const [lastPac, setLastPac] = createSignal(props.value);
   const [pac, setPac] = createSignal(props.value);
+
+  createEffect(() => {
+    console.log(pac(), lastPac());
+  });
 
   const onClick = async () => {
     await updatePac(pac()!);
 
     props.onChange();
+    setLastPac(pac());
   };
 
   return (
@@ -26,15 +32,13 @@ const Pac = (props: PacProps) => {
         onChange={setPac}
         disabled={props.disabled}
         onClick={(e) => {
-          console.log('点击');
-          console.log(e.currentTarget.scrollWidth);
           e.currentTarget.scrollBy({ left: e.currentTarget.scrollWidth });
         }}
       />
 
       <LazyButton
         icon={<AiOutlineCheck />}
-        disabled={!pac() || pac() === props.value}
+        disabled={!pac() || lastPac() === pac()}
         onClick={onClick}
       />
     </LazySpaceCompact>
