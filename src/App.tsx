@@ -12,6 +12,7 @@ import { checkTrojanProcess } from './lib/proxy';
 import { AppContext } from './app/context';
 import Download from './app/download';
 import Checking from './app/checking';
+import LogLevel from './app/log-level';
 
 const App = () => {
   const [autostartState, { mutate: mutateAutostartState }] =
@@ -98,6 +99,11 @@ const App = () => {
           pac={configuration()?.pac ?? ''}
         />
       </AppContext.Provider>
+
+      <LogLevel
+        level={configuration()?.log_level ?? 'Info'}
+        disabled={!!runningServerNode()}
+      />
     </div>
   );
 };
