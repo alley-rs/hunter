@@ -92,3 +92,7 @@ export const switchDaemon = async () => await invoke('switch_daemon');
 
 export const getProxyDaemon = async () =>
   await invoke<boolean>('get_proxy_daemon');
+
+export const setLogLevel = async (level: LogLevel) => {
+  await invoke<void>('set_log_level', { level });
+};

@@ -21,6 +21,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use config::LogLevel;
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use proxy::TrojanProcessState;
 use tauri::utils::platform::target_triple;
@@ -333,6 +334,16 @@ async fn write_trojan_config(server_node: ServerNode) -> HunterResult<()> {
 }
 
 #[tauri::command]
+async fn set_log_level(level: LogLevel) {
+    trace!("修改 trojan-go 日志等级");
+
+    let mut config = CONFIG.write().await;
+    config.set_log_level(level.clone());
+
+    info!(message = "trojan-go 日志等级已修改", level = ?level);
+}
+
+#[tauri::command]
 async fn switch_daemon() {
     trace!("切换后台驻留");
     let mut proxy = PROXY.write().await;
@@ -442,6 +453,7 @@ async fn main() -> HunterResult<()> {
             add_server_node,
             update_server_node,
             write_trojan_config,
+            set_log_level,
             switch_daemon,
             get_proxy_daemon,
             exit,
