@@ -72,9 +72,26 @@ impl TrojanConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum LogLevel {
+    Debug = 0,
+    Info,
+    Warn,
+    Error,
+    Off,
+}
+
+impl Default for LogLevel {
+    fn default() -> Self {
+        LogLevel::Info
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     local_addr: String,
     local_port: u16,
+    #[serde(default)]
+    log_level: LogLevel,
     pac: String,
     nodes: Vec<ServerNode>,
 }
@@ -85,6 +102,7 @@ impl Default for Config {
             local_addr: "127.0.0.1".to_owned(),
             local_port: 1086,
             pac: "https://mirror.ghproxy.com/https://raw.githubusercontent.com/thep0y/pac/main/blacklist.pac".to_owned(),
+            log_level: LogLevel::default(),
             nodes: Default::default(),
         }
     }
@@ -135,7 +153,8 @@ impl Config {
     }
 
     pub async fn write_trojan_config_file(&self, server_node: &ServerNode) -> HunterResult<()> {
-        let trojan_config = server_node.to_string(&self.local_addr, self.local_port);
+        let trojan_config =
+            server_node.to_string(&self.local_addr, self.local_port, self.log_level.clone());
 
         fs::write(&*TROJAN_CONFIG_FILE_PATH, trojan_config)
             .await
@@ -183,6 +202,10 @@ impl Config {
         self.write_trojan_config_file(node).await?;
 
         Ok(())
+    }
+
+    pub fn set_log_level(&mut self, log_level: LogLevel) {
+        self.log_level = log_level;
     }
 }
 
