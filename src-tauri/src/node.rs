@@ -46,7 +46,7 @@ impl ServerNode {
             .to_string();
 
         format!(
-            r#"{{"run_type": "client", "log_level": {}, "log_file": "{}", "local_addr": "{}", "local_port": {}, "remote_addr": "{}", "remote_port": {}, "password": ["{}"]}}"#,
+            r#"{{"run_type": "client", "log_level": {}, "log_file": "{}", "local_addr": "{}", "local_port": {}, "remote_addr": "{}", "remote_port": {}, "password": ["{}"], "mux": {{ "enabled": true }}}}"#,
             log_level,
             config_file_path,
             local_addr,
