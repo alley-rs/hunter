@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::config::{LogLevel, EXECUTABLE_DIR};
+use crate::config::EXECUTABLE_DIR;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ServerNode {
@@ -27,7 +27,7 @@ impl ServerNode {
         &self.password
     }
 
-    pub fn to_string(&self, local_addr: &str, local_port: u16, log_level: LogLevel) -> String {
+    pub fn to_string(&self, local_addr: &str, local_port: u16, log_level: i8) -> String {
         #[cfg(target_os = "windows")]
         let config_file_path = {
             let p = EXECUTABLE_DIR
@@ -47,7 +47,7 @@ impl ServerNode {
 
         format!(
             r#"{{"run_type": "client", "log_level": {}, "log_file": "{}", "local_addr": "{}", "local_port": {}, "remote_addr": "{}", "remote_port": {}, "password": ["{}"]}}"#,
-            log_level as u8,
+            log_level,
             config_file_path,
             local_addr,
             local_port,

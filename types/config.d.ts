@@ -6,4 +6,4 @@ interface Configuration {
   nodes: ServerNode[];
 }
 
-type LogLevel = `Debug` | `Info` | `Warn` | `Error` | `Off`;
+type LogLevel = 'Trace' | 'Debug' | 'Info' | 'Warn' | 'Error';
