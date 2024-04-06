@@ -1,4 +1,4 @@
-import { createSignal } from 'solid-js';
+import { createEffect, createSignal } from 'solid-js';
 import { LazySpace, LazySwitch, LazyTooltip } from '~/lazy';
 import { setLogLevel } from '~/lib/api';
 import { BiRegularCheck, BiRegularX } from 'solid-icons/bi';
@@ -10,6 +10,8 @@ interface LogLevelProps {
 
 const LogLevel = (props: LogLevelProps) => {
   const [level, setLevel] = createSignal(props.level);
+
+  createEffect(() => setLevel(props.level));
 
   return (
     <LazySpace style={{ 'margin-top': '1rem' }}>

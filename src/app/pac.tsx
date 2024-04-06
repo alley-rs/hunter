@@ -1,5 +1,5 @@
 import { AiOutlineCheck } from 'solid-icons/ai';
-import { createEffect, createSignal } from 'solid-js';
+import { createSignal } from 'solid-js';
 import { LazyButton, LazyInput, LazySpaceCompact } from '~/lazy';
 import { updatePac } from '~/lib';
 
@@ -12,10 +12,6 @@ interface PacProps {
 const Pac = (props: PacProps) => {
   const [lastPac, setLastPac] = createSignal(props.value);
   const [pac, setPac] = createSignal(props.value);
-
-  createEffect(() => {
-    console.log(pac(), lastPac());
-  });
 
   const onClick = async () => {
     await updatePac(pac()!);

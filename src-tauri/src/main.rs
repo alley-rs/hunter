@@ -27,6 +27,7 @@ use proxy::TrojanProcessState;
 use tauri::utils::platform::target_triple;
 use tauri::{AppHandle, Manager};
 use time::macros::{format_description, offset};
+use tokio::fs;
 use tracing::Level;
 use tracing_subscriber::fmt::time::OffsetTime;
 use url::Url;
@@ -381,6 +382,15 @@ async fn main() -> HunterResult<()> {
         offset!(+8),
         format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]"),
     );
+
+    // 清空之前的日志
+    let log_file = CONFIG_DIR.join("hunter.log");
+    if log_file.exists() {
+        fs::remove_file(log_file).await.map_err(|e| {
+            error!(message = "删除日志文件失败", error = ?e);
+            e
+        })?;
+    }
 
     // NOTE: _guard must be a top-level variable
     let (writer, _guard) = {
