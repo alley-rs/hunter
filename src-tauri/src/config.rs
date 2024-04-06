@@ -73,11 +73,23 @@ impl TrojanConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum LogLevel {
-    Debug = 0,
+    Trace,
+    Debug,
     Info,
     Warn,
     Error,
-    Off,
+}
+
+impl Into<i8> for LogLevel {
+    fn into(self) -> i8 {
+        match self {
+            LogLevel::Trace => -1,
+            LogLevel::Debug => 0,
+            LogLevel::Info => 1,
+            LogLevel::Warn => 2,
+            LogLevel::Error => 3,
+        }
+    }
 }
 
 impl Default for LogLevel {
@@ -153,8 +165,11 @@ impl Config {
     }
 
     pub async fn write_trojan_config_file(&self, server_node: &ServerNode) -> HunterResult<()> {
-        let trojan_config =
-            server_node.to_string(&self.local_addr, self.local_port, self.log_level.clone());
+        let trojan_config = server_node.to_string(
+            &self.local_addr,
+            self.local_port,
+            self.log_level.clone().into(),
+        );
 
         fs::write(&*TROJAN_CONFIG_FILE_PATH, trojan_config)
             .await

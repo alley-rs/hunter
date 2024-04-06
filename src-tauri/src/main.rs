@@ -156,20 +156,24 @@ async fn download_executable_file(window: tauri::Window, id: u32) -> HunterResul
     let mut cdn = Url::parse("https://mirror.ghproxy.com")?;
 
     #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
-    let url = "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-windows-amd64.zip";
+    let url =
+        "https://github.com/thep0y/trojan-go/releases/latest/download/trojan-go-windows-amd64.zip";
 
     #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-    let url = "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-darwin-amd64.zip";
+    let url =
+        "https://github.com/thep0y/trojan-go/releases/latest/download/trojan-go-darwin-amd64.zip";
 
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-    let url = "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-darwin-arm64.zip";
+    let url =
+        "https://github.com/thep0y/trojan-go/releases/latest/download/trojan-go-darwin-arm64.zip";
 
     #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
-    let url = "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-linux-amd64.zip";
+    let url =
+        "https://github.com/thep0y/trojan-go/releases/latest/download/trojan-go-linux-amd64.zip";
 
     #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
     let url =
-        "https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-linux-arm.zip";
+        "https://github.com/thep0y/trojan-go/releases/latest/download/trojan-go-linux-arm.zip";
 
     cdn.set_path(&utf8_percent_encode(url, NON_ALPHANUMERIC).to_string());
 

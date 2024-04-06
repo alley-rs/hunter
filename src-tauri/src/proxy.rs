@@ -391,15 +391,10 @@ impl Proxy {
     fn execute_command(&self) -> HunterResult<Command> {
         trace!("运行 trojan");
 
-        let out_log_file = fs::File::create(CONFIG_DIR.join("hunter-out.log")).map_err(|e| {
-            error!(message = "创建 hunter.log 失败", error = ?e);
+        let log_file = fs::File::create(EXECUTABLE_DIR.join("trojan-go.log")).map_err(|e| {
+            error!(message = "创建 trojan-go.log 失败", error = ?e);
             e
         })?;
-        let error_log_file =
-            fs::File::create(CONFIG_DIR.join("hunter-error.log")).map_err(|e| {
-                error!(message = "创建 hunter-error.log 失败", error = ?e);
-                e
-            })?;
 
         let mut cmd = new_command(
             &self.executable_file,
@@ -408,7 +403,7 @@ impl Proxy {
             "使用配置文件运行 trojan",
         );
 
-        cmd.stdout(out_log_file).stderr(error_log_file);
+        cmd.stderr(log_file);
 
         Ok(cmd)
     }

@@ -24,9 +24,9 @@ const LogLevel = (props: LogLevelProps) => {
           size="small"
           checkedChild={<BiRegularCheck />}
           uncheckedChild={<BiRegularX />}
-          checked={level() === 'Debug'}
+          checked={level() === 'Trace'}
           setChecked={(checked) => {
-            const newLevel = checked ? 'Debug' : 'Info';
+            const newLevel: LogLevel = checked ? 'Trace' : 'Info';
             setLevel(newLevel);
             setLogLevel(newLevel);
           }}
