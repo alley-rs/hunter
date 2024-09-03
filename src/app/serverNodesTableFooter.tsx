@@ -1,6 +1,6 @@
-import { BiRegularLinkAlt, BiRegularPlus } from 'solid-icons/bi';
-import { TbWashDryclean, TbWashDrycleanOff } from 'solid-icons/tb';
-import { createSignal, useContext } from 'solid-js';
+import { BiRegularLinkAlt, BiRegularPlus } from "solid-icons/bi";
+import { TbWashDryclean, TbWashDrycleanOff } from "solid-icons/tb";
+import { createSignal, useContext } from "solid-js";
 import {
   LazyButton,
   LazyFlex,
@@ -8,12 +8,12 @@ import {
   LazySwitch,
   LazyToast,
   LazyTooltip,
-} from '~/lazy';
-import { checkNetworkConnectivity, turnOffProxy, turnOnProxy } from '~/lib';
-import Pac from './pac';
-import notify from '~/lib/notify';
-import { TableContext } from './context';
-import { AlertProps } from 'alley-components';
+} from "~/lazy";
+import { checkNetworkConnectivity, turnOffProxy, turnOnProxy } from "~/lib";
+import Pac from "./pac";
+import notify from "~/lib/notify";
+import { TableContext } from "./context";
+import type { AlertProps } from "alley-components";
 
 interface ServerNodesTableFooterProps {
   addNewServerNode: () => void;
@@ -27,17 +27,17 @@ const ServerNodesTableFooter = (props: ServerNodesTableFooterProps) => {
 
   const [checkingConnect, setCheckingConnect] = createSignal(false);
   const [connectState, setConnectState] = createSignal<{
-    type: AlertProps['type'];
-    message: AlertProps['message'];
+    type: AlertProps["type"];
+    message: AlertProps["message"];
   } | null>(null);
 
   const handleSwitchProxy = async (value: boolean) => {
     if (value) {
       await turnOnProxy();
-      notify('已开启系统代理');
+      notify("已开启系统代理");
     } else {
       await turnOffProxy();
-      notify('已关闭系统代理');
+      notify("已关闭系统代理");
     }
 
     proxyState.refecth();
@@ -48,15 +48,15 @@ const ServerNodesTableFooter = (props: ServerNodesTableFooterProps) => {
     try {
       const cost = await checkNetworkConnectivity();
       const costFormatted =
-        cost > 1 ? cost.toFixed(1) + 's' : Math.round(cost * 1000) + 'ms';
+        cost > 1 ? `${cost.toFixed(1)}s` : `${Math.round(cost * 1000)}ms`;
 
       setConnectState({
-        type: 'success',
+        type: "success",
         message: `网络已连通，访问谷歌用时：${costFormatted}`,
       });
     } catch (e) {
       setConnectState({
-        type: 'error',
+        type: "error",
         message: String(e),
       });
     } finally {
@@ -71,7 +71,7 @@ const ServerNodesTableFooter = (props: ServerNodesTableFooterProps) => {
         placement="bottom"
         onClose={() => setConnectState(null)}
         alert={{
-          type: connectState()?.type ?? 'success',
+          type: connectState()?.type ?? "success",
           showIcon: true,
           message: connectState()?.message,
         }}
@@ -83,6 +83,7 @@ const ServerNodesTableFooter = (props: ServerNodesTableFooterProps) => {
         disabled={!proxyState.value()}
       >
         <LazyButton
+          type="plain"
           isLoading={checkingConnect()}
           icon=<BiRegularLinkAlt />
           shape="circle"
@@ -105,17 +106,18 @@ const ServerNodesTableFooter = (props: ServerNodesTableFooterProps) => {
           disabled={props.disableAddButton}
         >
           <LazyButton
+            type="plain"
             shape="circle"
             size="small"
             icon={<BiRegularPlus />}
-            style={{ display: 'inline-flex' }}
+            style={{ display: "inline-flex" }}
             disabled={props.disableAddButton}
             onClick={props.addNewServerNode}
           />
         </LazyTooltip>
 
         <LazyTooltip
-          text={(proxyState.value() ? '关闭' : '开启') + '系统代理'}
+          text={`${proxyState.value() ? "关闭" : "开启"}系统代理`}
           placement="bottom"
           disabled={!runningServerNode.value()}
         >

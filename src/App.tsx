@@ -12,7 +12,7 @@ import {
   getProxyDaemon,
   showMainWindow,
 } from "./lib";
-import { LazyRow } from "~/lazy";
+import { LazyFlex, LazyRow } from "~/lazy";
 import LocalAddr from "./app/local-addr";
 import LocalPort from "./app/local-port";
 import DarkSwitch from "./app/darkSwitch";
@@ -53,7 +53,7 @@ const App = () => {
   });
 
   return (
-    <div id="index">
+    <LazyFlex id="index" direction="vertical" justify="between">
       <Checking
         show={runningServerNode() === undefined}
         text="检测进程状态..."
@@ -84,7 +84,7 @@ const App = () => {
           <Download />
         </Show>
 
-        <div>
+        <LazyFlex direction="vertical">
           <LazyRow>
             <LocalAddr
               value={configuration()?.local_addr}
@@ -103,23 +103,23 @@ const App = () => {
             <Autostart />
             <DarkSwitch />
           </LazyRow>
-        </div>
 
-        <ServerNodesTable
-          serverNodes={configuration()?.nodes}
-          switch={() => refetchRunningServerNode()}
-          refetch={refetchConfiguration}
-          usingServerNodeName={runningServerNode()?.name}
-          handleDaemon={mutateProxyDaemon}
-          pac={configuration()?.pac ?? ""}
-        />
+          <ServerNodesTable
+            serverNodes={configuration()?.nodes}
+            switch={() => refetchRunningServerNode()}
+            refetch={refetchConfiguration}
+            usingServerNodeName={runningServerNode()?.name}
+            handleDaemon={mutateProxyDaemon}
+            pac={configuration()?.pac ?? ""}
+          />
+        </LazyFlex>
       </AppContext.Provider>
 
       <LogLevel
         level={configuration()?.log_level ?? "Info"}
         disabled={!!runningServerNode()}
       />
-    </div>
+    </LazyFlex>
   );
 };
 

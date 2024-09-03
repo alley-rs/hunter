@@ -1,14 +1,14 @@
-import { For, Show, mergeProps } from 'solid-js';
-import { addClassNames } from 'alley-components';
-import './index.scss';
-import { LazyEmpty } from '~/lazy';
-import { TableProps } from './interface';
-import TableEditableRow from './editable-row';
+import { For, Show, mergeProps } from "solid-js";
+import { addClassNames } from "alley-components";
+import "./index.scss";
+import { LazyEmpty } from "~/lazy";
+import type { TableProps } from "./interface";
+import TableEditableRow from "./editable-row";
 
-const baseClassName = 'alley-table';
+const baseClassName = "alley-table";
 
 const Table = (props: TableProps) => {
-  const merged = mergeProps({ size: 'large' }, props);
+  const merged = mergeProps({ size: "large" }, props);
 
   const className = () =>
     addClassNames(
@@ -21,12 +21,12 @@ const Table = (props: TableProps) => {
     <div class={className()} style={props.style}>
       <div class={`${baseClassName}-container`}>
         <div class={`${baseClassName}-content`}>
-          <table style={{ 'table-layout': 'auto' }}>
+          <table style={{ "table-layout": "auto" }}>
             <colgroup>
               <For
                 each={
                   merged.actions
-                    ? [...merged.columns, { title: '操作', width: undefined }]
+                    ? [...merged.columns, { title: "操作", width: undefined }]
                     : merged.columns
                 }
               >
@@ -35,11 +35,11 @@ const Table = (props: TableProps) => {
                     style={
                       item.width
                         ? {
-                            width:
-                              typeof item.width === 'string'
-                                ? item.width
-                                : `${item.width}px`,
-                          }
+                          width:
+                            typeof item.width === "string"
+                              ? item.width
+                              : `${item.width}px`,
+                        }
                         : undefined
                     }
                   />
@@ -52,9 +52,9 @@ const Table = (props: TableProps) => {
                   each={
                     merged.actions
                       ? [
-                          ...merged.columns,
-                          { title: '操作', width: undefined, class: undefined },
-                        ]
+                        ...merged.columns,
+                        { title: "操作", width: undefined, class: undefined },
+                      ]
                       : merged.columns
                   }
                 >
@@ -86,7 +86,7 @@ const Table = (props: TableProps) => {
                       record={record}
                       columns={props.columns}
                       actions={props.actions}
-                      defaultEditing={!!record['defaultEditing']}
+                      defaultEditing={!!record["defaultEditing"]}
                       onGlobalChange={props.onGlobalChange}
                     />
                   )}
