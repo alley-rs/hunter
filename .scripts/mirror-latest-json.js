@@ -1,14 +1,12 @@
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
 
 const mirrors = [
-  { host: 'mirror.ghproxy.com', prefix: true },
-  { host: 'kkgithub.com' },
-  { host: '521github.com' },
-  { host: 'hub.yzuu.cf' },
+  { host: "mirror.ghproxy.com", prefix: true },
+  { host: "kkgithub.com" },
 ];
 
-const GITHUB = 'https://github.com/';
+const GITHUB = "https://github.com/";
 
 const mirrorContent = (mirror, text) => {
   if (mirror.prefix) {
@@ -16,9 +14,9 @@ const mirrorContent = (mirror, text) => {
       GITHUB,
       `https://${mirror.host}/https://github.com/`,
     );
-  } else {
-    return text.replaceAll(GITHUB, `https://${mirror.host}/`);
   }
+
+  return text.replaceAll(GITHUB, `https://${mirror.host}/`);
 };
 
 const newMirrorJSON = (text, mirror, filepath) => {
@@ -39,14 +37,14 @@ const run = async () => {
   }
 
   text = text
-    .replace('\\n}', '}') // 处理结尾的换行
-    .replaceAll('\\n ', '\n') // 删除 notes 外的换行
-    .replaceAll(/\s+/g, '') // 删除所有空白符
+    .replace("\\n}", "}") // 处理结尾的换行
+    .replaceAll("\\n ", "\n") // 删除 notes 外的换行
+    .replaceAll(/\s{2,}/g, "") // 删除所有空白符
     .replaceAll('\\"', '"') // 替换转义的双引号
-    .replaceAll('\\\\n', '\\n'); // 处理 notes 中的换行
+    .replaceAll("\\\\n", "\\n"); // 处理 notes 中的换行
 
   const currentDir = process.cwd();
-  const targetDir = path.join(currentDir, 'mirrors');
+  const targetDir = path.join(currentDir, "mirrors");
 
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir);
