@@ -1,9 +1,10 @@
-import { appWindow } from '@tauri-apps/api/window';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { createSignal, onMount, useContext } from 'solid-js';
 import { LazyCircleProgress } from '~/lazy';
 import { downloadExecutableFile, getExecutableFile, unzip } from '~/lib';
 import notify from '~/lib/notify';
 import { AppContext } from './context';
+const appWindow = getCurrentWebviewWindow()
 
 const Download = () => {
   const { download } = useContext(AppContext)!;

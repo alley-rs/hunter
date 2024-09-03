@@ -253,14 +253,14 @@ impl Proxy {
         let name = "trojan-go.exe";
 
         let sys = System::new_all();
-        for p in sys.processes_by_exact_name(name) {
+        for p in sys.processes_by_exact_name(name.as_ref()) {
             debug!(message = "获取到进程", pid = ?p.pid(), cmd = ?p.cmd());
             state.pid = p.pid().as_u32();
             if p.cmd().len() >= 3 {
-                state.second = p.cmd()[1].clone();
-                state.third = p.cmd()[2].clone();
+                state.second = p.cmd()[1].to_string_lossy().to_string();
+                state.third = p.cmd()[2].to_string_lossy().to_string();
+                break;
             }
-            break;
         }
 
         if state.pid == 0 {
@@ -374,7 +374,7 @@ impl Proxy {
 
         debug!(message = "获取到 auto config url", url = auto_config_url);
 
-        if auto_config_url.len() == 0 {
+        if auto_config_url.is_empty() {
             info!("自动 pac 未设置");
             return Ok(false);
         }
