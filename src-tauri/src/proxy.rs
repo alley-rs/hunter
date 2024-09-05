@@ -17,9 +17,9 @@ use windows_registry::{Key, Value, CURRENT_USER};
 #[cfg(target_os = "linux")]
 use crate::linux::{get_desktop_from_env, Desktop};
 use crate::{
-    config::{AUTOSTART_DIR, CONFIG, CONFIG_DIR, EXECUTABLE_DIR, TROJAN_CONFIG_FILE_PATH},
+    config::{get_or_init_config_manager, ServerNode},
     error::{Error, HunterResult},
-    node::ServerNode,
+    global::{AUTOSTART_DIR, EXECUTABLE_DIR},
     utils::execute::{execute, new_command},
 };
 
@@ -81,24 +81,6 @@ pub enum TrojanProcessState {
 
 impl Proxy {
     pub fn new() -> HunterResult<Self> {
-        if !EXECUTABLE_DIR.exists() {
-            info!(message = "hunter 缓存目录不存在, 自动创建", dir = ?*EXECUTABLE_DIR);
-            fs::create_dir(EXECUTABLE_DIR.as_path()).map_err(|e| {
-                error!(message = "创建 hunter 缓存目录失败", error = ?e);
-
-                Error::Io(e)
-            })?;
-        }
-
-        if !CONFIG_DIR.exists() {
-            info!(message = "hunter 配置目录不存在, 自动创建", dir = ?*CONFIG_DIR);
-            fs::create_dir(CONFIG_DIR.as_path()).map_err(|e| {
-                error!(message = "创建 hunter 配置目录失败", error = ?e);
-
-                Error::Io(e)
-            })?;
-        }
-
         let executable_file = EXECUTABLE_DIR.join(EXECUTABLE_FILE);
 
         #[cfg(target_os = "macos")]
@@ -175,10 +157,12 @@ impl Proxy {
             kill(self.child_id)?;
         }
 
-        let config = CONFIG.read().await;
-        config.set_server_node(name).await?;
+        get_or_init_config_manager()
+            .await
+            .set_server_node(name)
+            .await?;
 
-        self.execute()
+        self.execute().await
     }
 
     pub fn enable_auto_proxy_url(&self, pac: &str) -> HunterResult<()> {
@@ -270,15 +254,18 @@ impl Proxy {
 
         info!(message = "检测到 trojan-go 进程", process_state = ?state);
 
-        if state.second != "-config" || Path::new(&state.third) != *TROJAN_CONFIG_FILE_PATH {
+        let trojan_config_path = get_or_init_config_manager().await.trojan_config_path();
+
+        if state.second != "-config" || Path::new(&state.third) != trojan_config_path {
             warn!("检测到不是由本程序创建的 trojan 进程");
             return Ok(Some(TrojanProcessState::Other { pid: state.pid }));
         }
 
         // trojan 正在运行时，在 trojan config 中获取到的 node 一定是有效的
-        let config = CONFIG.read().await;
-        let server_node = config.get_using_server_node().await?.cloned();
-        drop(config);
+        let server_node = get_or_init_config_manager()
+            .await
+            .get_using_server_node()
+            .await?;
 
         match server_node {
             None => {
@@ -388,7 +375,7 @@ impl Proxy {
         self.executable_file.exists()
     }
 
-    fn execute_command(&self) -> HunterResult<Command> {
+    async fn execute_command(&self) -> HunterResult<Command> {
         trace!("运行 trojan");
 
         let log_file = fs::File::create(EXECUTABLE_DIR.join("trojan-go.log")).map_err(|e| {
@@ -396,9 +383,11 @@ impl Proxy {
             e
         })?;
 
+        let trojan_config_path = get_or_init_config_manager().await.trojan_config_path();
+
         let mut cmd = new_command(
             &self.executable_file,
-            vec!["-config", TROJAN_CONFIG_FILE_PATH.to_str().unwrap()],
+            vec!["-config", trojan_config_path.to_str().unwrap()],
             #[cfg(debug_assertions)]
             "使用配置文件运行 trojan",
         );
@@ -408,8 +397,8 @@ impl Proxy {
         Ok(cmd)
     }
 
-    pub fn execute(&mut self) -> HunterResult<()> {
-        let mut cmd = self.execute_command()?;
+    pub async fn execute(&mut self) -> HunterResult<()> {
+        let mut cmd = self.execute_command().await?;
 
         let child = cmd.spawn().map_err(|e| {
             error!(message = "创建 cmd 进程失败", error = ?e);
@@ -485,17 +474,19 @@ X-KDE-AutostartScript=true
     }
 
     #[cfg(target_os = "windows")]
-    pub fn switch_auto_start(&self, current_state: bool) -> HunterResult<()> {
+    pub async fn switch_auto_start(&self, current_state: bool) -> HunterResult<()> {
         if current_state {
             debug!("删除开机启动脚本");
             return Ok(fs::remove_file(&self.auto_start_vbs)?);
         }
 
+        let trojan_config_path = get_or_init_config_manager().await.trojan_config_path();
+
         let content = format!(
             r#"set ws=WScript.CreateObject("WScript.Shell")
 ws.Run "{} -config {}",0"#,
             self.executable_file.to_string_lossy(),
-            TROJAN_CONFIG_FILE_PATH.to_str().unwrap()
+            trojan_config_path.to_str().unwrap()
         );
 
         debug!("添加开机启动脚本");

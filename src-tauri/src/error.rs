@@ -31,6 +31,10 @@ pub enum Error {
     #[error(transparent)]
     Zip(#[from] ZipError),
     #[error(transparent)]
+    TomlDeserialize(#[from] toml::de::Error),
+    #[error(transparent)]
+    TomlSerialize(#[from] toml::ser::Error),
+    #[error(transparent)]
     Update(#[from] tauri_plugin_updater::Error),
     #[cfg(target_os = "linux")]
     #[error(transparent)]
