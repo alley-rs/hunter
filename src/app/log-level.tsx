@@ -1,7 +1,7 @@
-import { createEffect, createSignal } from 'solid-js';
-import { LazySpace, LazySwitch, LazyTooltip } from '~/lazy';
-import { setLogLevel } from '~/lib/api';
-import { BiRegularCheck, BiRegularX } from 'solid-icons/bi';
+import { createEffect, createSignal } from "solid-js";
+import { LazySpace, LazySwitch, LazyTooltip } from "~/lazy";
+import { setLogLevel } from "~/lib/api";
+import { BiRegularCheck, BiRegularX } from "solid-icons/bi";
 
 interface LogLevelProps {
   level: LogLevel;
@@ -14,7 +14,7 @@ const LogLevel = (props: LogLevelProps) => {
   createEffect(() => setLevel(props.level));
 
   return (
-    <LazySpace style={{ 'margin-top': '1rem' }}>
+    <LazySpace justify="center">
       <label>调试</label>
 
       <LazyTooltip
@@ -26,9 +26,9 @@ const LogLevel = (props: LogLevelProps) => {
           size="small"
           checkedChild={<BiRegularCheck />}
           uncheckedChild={<BiRegularX />}
-          checked={level() === 'Trace'}
+          checked={level() === "Trace"}
           setChecked={(checked) => {
-            const newLevel: LogLevel = checked ? 'Trace' : 'Info';
+            const newLevel: LogLevel = checked ? "Trace" : "Info";
             setLevel(newLevel);
             setLogLevel(newLevel);
           }}

@@ -3,7 +3,7 @@ use futures_util::TryStreamExt;
 use reqwest::IntoUrl;
 use serde::Serialize;
 use std::{collections::HashMap, path::Path};
-use tauri::{Runtime, Window};
+use tauri::{Emitter, Runtime, Window};
 use tokio::{fs::File, io::AsyncWriteExt};
 
 pub const DOWNLOAD_EVENT: &str = "download://progress";

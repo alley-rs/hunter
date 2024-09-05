@@ -30,6 +30,8 @@ pub enum Error {
     SerdeJSON(#[from] serde_json::Error),
     #[error(transparent)]
     Zip(#[from] ZipError),
+    #[error(transparent)]
+    Update(#[from] tauri_plugin_updater::Error),
     #[cfg(target_os = "linux")]
     #[error(transparent)]
     Var(#[from] std::env::VarError),

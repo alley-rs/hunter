@@ -1,26 +1,26 @@
 import {
   For,
-  JSXElement,
+  type JSXElement,
   Match,
   Show,
   Switch,
   createMemo,
   createSignal,
   useContext,
-} from 'solid-js';
-import TabelCell from './cell';
-import {
+} from "solid-js";
+import TabelCell from "./cell";
+import type {
   BaseTableActionColumn,
   EditTableActionColumn,
   TableColumn,
   TableProps,
-} from './interface';
+} from "./interface";
 import {
   BiRegularCheck,
   BiRegularEdit,
   BiRegularTrash,
   BiRegularX,
-} from 'solid-icons/bi';
+} from "solid-icons/bi";
 import {
   LazyButton,
   LazyFlex,
@@ -29,9 +29,9 @@ import {
   LazySwitch,
   LazyTooltip,
   LazySpace,
-} from '~/lazy';
-import { checkExecutableFile, deepEqual } from '~/lib';
-import { AppContext } from '../context';
+} from "~/lazy";
+import { checkExecutableFile, deepEqual } from "~/lib";
+import { AppContext } from "../context";
 
 interface InputCellProps {
   index: number;
@@ -44,7 +44,7 @@ const InputCell = (props: InputCellProps) => {
   return (
     <LazyFlex>
       <Switch>
-        <Match when={typeof props.value === 'string'}>
+        <Match when={typeof props.value === "string"}>
           <LazyInput
             size="small"
             value={props.value}
@@ -53,7 +53,7 @@ const InputCell = (props: InputCellProps) => {
           />
         </Match>
 
-        <Match when={typeof props.value === 'number'}>
+        <Match when={typeof props.value === "number"}>
           <LazyInputNumber
             value={props.value as number}
             min={1}
@@ -76,7 +76,7 @@ interface SwitchServerNodeProps {
 const SwitchServerNode = (props: SwitchServerNodeProps) => {
   return (
     <LazyTooltip
-      text={props.state ? '退出后台进程并关闭系统代理' : '使用此节点开启代理'}
+      text={props.state ? "退出后台进程并关闭系统代理" : "使用此节点开启代理"}
     >
       <LazySwitch
         checked={props.state}
@@ -93,9 +93,9 @@ const SwitchServerNode = (props: SwitchServerNodeProps) => {
 interface TooltipActionProps {
   index: number;
   action:
-    | Omit<BaseTableActionColumn, 'onClick'>
-    | Omit<EditTableActionColumn['edited'], 'onClick'>
-    | EditTableActionColumn['editing'];
+  | Omit<BaseTableActionColumn, "onClick">
+  | Omit<EditTableActionColumn["edited"], "onClick">
+  | EditTableActionColumn["editing"];
   onClick: () => void;
   icon: JSXElement;
   disabled?: boolean;
@@ -107,6 +107,7 @@ const TooltipAction = (props: TooltipActionProps) => {
       when={props.action.tooltip}
       fallback={
         <LazyButton
+          type="plain"
           shape="circle"
           icon={props.icon}
           onClick={props.onClick}
@@ -121,6 +122,7 @@ const TooltipAction = (props: TooltipActionProps) => {
         disabled={props.disabled}
       >
         <LazyButton
+          type="plain"
           shape="circle"
           icon={props.icon}
           onClick={props.onClick}
@@ -153,7 +155,7 @@ const DeleteAction = (props: DeleteActionProps) => {
 
 interface CancelActionProps {
   index: number;
-  cancel: EditTableActionColumn['cancel'];
+  cancel: EditTableActionColumn["cancel"];
   onClick: () => void;
 }
 
@@ -170,7 +172,7 @@ const CancelAction = (props: CancelActionProps) => {
 
 interface EditActionProps {
   index: number;
-  editing: EditTableActionColumn['editing'];
+  editing: EditTableActionColumn["editing"];
   using?: boolean;
   onClick: () => void;
 }
@@ -189,7 +191,7 @@ const EditAction = (props: EditActionProps) => {
 
 interface SaveActionProps {
   index: number;
-  edited: EditTableActionColumn['edited'];
+  edited: EditTableActionColumn["edited"];
   disabled?: boolean;
   value: ServerNode;
   beforeClick: () => void;
@@ -214,15 +216,15 @@ const SaveAction = (props: SaveActionProps) => {
   );
 };
 
-const baseClassName = 'alley-table';
+const baseClassName = "alley-table";
 
 interface TableEditableRowProps {
   index: number;
   record: ServerNode;
   columns: TableColumn[];
-  actions: TableProps['actions'];
+  actions: TableProps["actions"];
   defaultEditing: boolean;
-  onGlobalChange?: TableProps['onGlobalChange'];
+  onGlobalChange?: TableProps["onGlobalChange"];
 }
 
 const TableEditableRow = (props: TableEditableRowProps) => {
@@ -233,7 +235,7 @@ const TableEditableRow = (props: TableEditableRowProps) => {
 
   const disabled = createMemo(
     () =>
-      Object.values(value()).filter((v) => typeof v !== 'boolean' && !v)
+      Object.values(value()).filter((v) => typeof v !== "boolean" && !v)
         .length > 0,
   );
 
@@ -258,7 +260,7 @@ const TableEditableRow = (props: TableEditableRowProps) => {
               fallback={
                 <Show
                   when={
-                    typeof props.record[key as keyof ServerNode] === 'boolean'
+                    typeof props.record[key as keyof ServerNode] === "boolean"
                   }
                   fallback={props.record[key as keyof ServerNode]}
                 >

@@ -1,18 +1,29 @@
-import { Show, createEffect, createResource, createSignal } from 'solid-js';
-import '~/App.scss';
-import { getAutostartState, getConfig, getProxyDaemon } from './lib';
-import { LazyRow } from '~/lazy';
-import LocalAddr from './app/local-addr';
-import LocalPort from './app/local-port';
-import DarkSwitch from './app/darkSwitch';
-import Daemon from './app/daemon';
-import Autostart from './app/autostart';
-import ServerNodesTable from './app/serverNodesTable';
-import { checkTrojanProcess } from './lib/proxy';
-import { AppContext } from './app/context';
-import Download from './app/download';
-import Checking from './app/checking';
-import LogLevel from './app/log-level';
+import {
+  Show,
+  createEffect,
+  createResource,
+  createSignal,
+  onMount,
+} from "solid-js";
+import "~/App.scss";
+import {
+  getAutostartState,
+  getConfig,
+  getProxyDaemon,
+  showMainWindow,
+} from "./lib";
+import { LazyFlex, LazyRow } from "~/lazy";
+import LocalAddr from "./app/local-addr";
+import LocalPort from "./app/local-port";
+import DarkSwitch from "./app/darkSwitch";
+import Daemon from "./app/daemon";
+import Autostart from "./app/autostart";
+import ServerNodesTable from "./app/serverNodesTable";
+import { checkTrojanProcess } from "./lib/proxy";
+import { AppContext } from "./app/context";
+import Download from "./app/download";
+import Checking from "./app/checking";
+import LogLevel from "./app/log-level";
 
 const App = () => {
   const [autostartState, { mutate: mutateAutostartState }] =
@@ -31,6 +42,10 @@ const App = () => {
 
   const [showDownloader, setShowDownloader] = createSignal<boolean>(false);
 
+  onMount(() => {
+    showMainWindow();
+  });
+
   createEffect(() => {
     if (runningServerNode() === undefined) return;
 
@@ -38,7 +53,7 @@ const App = () => {
   });
 
   return (
-    <div id="index">
+    <LazyFlex id="index" direction="vertical" justify="between">
       <Checking
         show={runningServerNode() === undefined}
         text="检测进程状态..."
@@ -69,7 +84,7 @@ const App = () => {
           <Download />
         </Show>
 
-        <div>
+        <LazyFlex direction="vertical">
           <LazyRow>
             <LocalAddr
               value={configuration()?.local_addr}
@@ -88,23 +103,23 @@ const App = () => {
             <Autostart />
             <DarkSwitch />
           </LazyRow>
-        </div>
 
-        <ServerNodesTable
-          serverNodes={configuration()?.nodes}
-          switch={() => refetchRunningServerNode()}
-          refetch={refetchConfiguration}
-          usingServerNodeName={runningServerNode()?.name}
-          handleDaemon={mutateProxyDaemon}
-          pac={configuration()?.pac ?? ''}
-        />
+          <ServerNodesTable
+            serverNodes={configuration()?.nodes}
+            switch={() => refetchRunningServerNode()}
+            refetch={refetchConfiguration}
+            usingServerNodeName={runningServerNode()?.name}
+            handleDaemon={mutateProxyDaemon}
+            pac={configuration()?.pac ?? ""}
+          />
+        </LazyFlex>
       </AppContext.Provider>
 
       <LogLevel
-        level={configuration()?.log_level ?? 'Info'}
+        level={configuration()?.log_level ?? "Info"}
         disabled={!!runningServerNode()}
       />
-    </div>
+    </LazyFlex>
   );
 };
 

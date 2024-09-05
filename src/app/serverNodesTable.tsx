@@ -2,7 +2,7 @@ import { createEffect, createMemo, useContext, createResource } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { LazyTable } from '~/lazy';
 import type { TableProps } from './table/interface';
-import { confirm } from '@tauri-apps/api/dialog';
+import { confirm } from '@tauri-apps/plugin-dialog';
 import {
   addServerNode,
   changeServerNode,

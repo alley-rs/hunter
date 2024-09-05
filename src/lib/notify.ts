@@ -2,8 +2,8 @@ import {
   isPermissionGranted,
   requestPermission,
   sendNotification,
-} from '@tauri-apps/api/notification';
-import type { Options } from '@tauri-apps/api/notification';
+} from '@tauri-apps/plugin-notification';
+import type { Options } from '@tauri-apps/plugin-notification';
 
 const notify = async (message: string | Options) => {
   let permissionGranted = await isPermissionGranted();
