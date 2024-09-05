@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf, sync::LazyLock};
 
-const APP_NAME: &str = "hunter";
+pub const APP_NAME: &str = "hunter";
 
 pub(super) static EXECUTABLE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     let dir = dirs::cache_dir().unwrap().join(APP_NAME);

@@ -14,8 +14,8 @@ use crate::error::{Error, HunterResult};
 pub use crate::config::config::Config;
 pub use crate::config::log_level::LogLevel;
 pub use crate::config::node::ServerNode;
+use crate::global::APP_NAME;
 
-const APP_NAME: &str = "hunter";
 const CONFIG_FILE_NAME: &str = "hunter.toml";
 const TROJAN_CONFIG_FILE_NAME: &str = "config.json";
 

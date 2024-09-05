@@ -13,10 +13,10 @@ pub(super) fn setup_logging() {
 
     #[cfg(all(desktop, not(debug_assertions)))]
     let writer = {
-        use crate::global::APP_CONFIG_DIR;
+        use crate::global::APP_NAME;
         use std::{fs::File, sync::Mutex};
-        let log_file =
-            File::create(APP_CONFIG_DIR.join("lsar.log")).expect("Failed to create the log file");
+        let dir = dirs::config_dir().unwrap().join(APP_NAME);
+        let log_file = File::create(dir.join("lsar.log")).expect("Failed to create the log file");
         Mutex::new(log_file)
     };
 

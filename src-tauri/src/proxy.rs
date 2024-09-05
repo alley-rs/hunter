@@ -435,7 +435,9 @@ impl Proxy {
     }
 
     #[cfg(target_os = "linux")]
-    pub fn switch_auto_start(&self, current_state: bool) -> HunterResult<()> {
+    pub async fn switch_auto_start(&self, current_state: bool) -> HunterResult<()> {
+        let trojan_config_path = get_or_init_config_manager().await.trojan_config_path();
+
         if current_state {
             debug!("delete auto start script");
             fs::remove_file(&self.auto_start_desktop).map_err(|e| {
@@ -458,7 +460,7 @@ Type=Application
 X-KDE-AutostartScript=true
 "#,
             self.executable_file.to_string_lossy(),
-            TROJAN_CONFIG_FILE_PATH.to_string_lossy()
+            trojan_config_path.to_string_lossy()
         );
 
         debug!("add auto start script");
@@ -494,7 +496,7 @@ ws.Run "{} -config {}",0"#,
     }
 
     #[cfg(target_os = "macos")]
-    pub fn switch_auto_start(&self, current_state: bool) -> HunterResult<()> {
+    pub async fn switch_auto_start(&self, current_state: bool) -> HunterResult<()> {
         if current_state {
             debug!("删除开机启动脚本");
             return fs::remove_file(&self.auto_start_plist).map_err(|e| {
@@ -502,6 +504,8 @@ ws.Run "{} -config {}",0"#,
                 Error::Io(e)
             });
         }
+
+        let trojan_config_path = get_or_init_config_manager().await.trojan_config_path();
 
         let content = format!(
             r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -522,7 +526,7 @@ ws.Run "{} -config {}",0"#,
 </plist>
 "#,
             self.executable_file.to_string_lossy(),
-            TROJAN_CONFIG_FILE_PATH.to_str().unwrap()
+            trojan_config_path.to_str().unwrap()
         );
 
         debug!("添加开机启动脚本");
