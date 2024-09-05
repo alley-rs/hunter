@@ -7,13 +7,14 @@ use reqwest::{Client, Proxy};
 use std::time::{Duration, Instant};
 
 use crate::{
-    config::CONFIG,
+    config::get_or_init_config_manager,
     error::{Error, HunterResult},
 };
 
 pub async fn check_proxy(duration: Duration) -> HunterResult<f64> {
     info!("检测代理，超时时间：{:?}", duration);
-    let config = CONFIG.read().await;
+
+    let config = get_or_init_config_manager().await.get_config().await;
 
     let retries = 3;
     let proxy = Proxy::all(config.local_socks5_addr()).map_err(|e| {

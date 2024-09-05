@@ -1,10 +1,10 @@
 mod config;
 // mod consts;
 mod error;
-mod node;
 mod proxy;
 mod run_event;
 // mod tray;
+mod global;
 #[cfg(target_os = "linux")]
 mod linux;
 mod setup;
@@ -20,21 +20,19 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use global::EXECUTABLE_DIR;
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use tauri::{AppHandle, Manager};
 use url::Url;
 
-use crate::config::LogLevel;
-use crate::config::{Config, AUTOSTART_DIR, CONFIG, CONFIG_DIR, EXECUTABLE_DIR};
+use crate::config::{get_or_init_config_manager, Config, LogLevel, ServerNode};
 use crate::error::HunterResult;
-use crate::node::ServerNode;
 use crate::proxy::TrojanProcessState;
 use crate::proxy::{kill, EXECUTABLE_FILE, PROXY};
 use crate::run_event::handle_run_event;
 use crate::setup::{setup_app, setup_logging};
 use crate::utils::check_proxy;
 use crate::utils::download::download;
-use crate::utils::fs::create_dir_if_not_exists;
 use crate::utils::unzip::Zip;
 
 #[tauri::command]
@@ -62,7 +60,7 @@ async fn turn_off_proxy() -> HunterResult<()> {
 async fn turn_on_proxy() -> HunterResult<()> {
     trace!("开启代理");
     {
-        let config = CONFIG.read().await;
+        let config = get_or_init_config_manager().await.get_config().await;
         let proxy = PROXY.read().await;
         proxy.enable_auto_proxy_url(config.pac())?;
     }
@@ -96,7 +94,7 @@ async fn kill_process(id: Option<u32>) -> HunterResult<()> {
 async fn execute() -> HunterResult<()> {
     trace!("执行 trojan 程序");
     let mut proxy = PROXY.write().await;
-    proxy.execute()
+    proxy.execute().await
 }
 
 #[tauri::command]
@@ -235,7 +233,7 @@ async fn auto_start_state() -> bool {
 async fn switch_auto_start(current_state: bool) -> HunterResult<()> {
     trace!("切换开机自启");
     let proxy = PROXY.read().await;
-    proxy.switch_auto_start(current_state)?;
+    proxy.switch_auto_start(current_state).await?;
 
     // let tray = handle.tray_handle().get_item("autostart");
     // if current_state {
@@ -256,22 +254,26 @@ async fn unzip(zip: Zip) -> HunterResult<()> {
 
 #[tauri::command]
 async fn get_config() -> Config {
-    let config = CONFIG.read().await;
-    config.clone()
+    get_or_init_config_manager().await.get_config().await
 }
 
 #[tauri::command]
-async fn update_config(config: Config) {
-    // 只更新 CONFIG 变量，不写入文件，用于程序的运行时，减少 io 次数
-    let mut lock = CONFIG.write().await;
-    *lock = config;
+async fn update_config(config: Config) -> HunterResult<()> {
+    get_or_init_config_manager()
+        .await
+        .update_config(|conf| *conf = config)
+        .await
 }
 
 #[tauri::command]
 async fn update_local_addr(addr: &str) -> HunterResult<()> {
     trace!("update - local_addr");
-    let mut config = CONFIG.write().await;
-    config.set_local_addr(addr);
+    get_or_init_config_manager()
+        .await
+        .update_config(|config| {
+            config.set_local_addr(addr);
+        })
+        .await?;
     info!(message = "updated", local_addr = addr);
 
     Ok(())
@@ -280,8 +282,12 @@ async fn update_local_addr(addr: &str) -> HunterResult<()> {
 #[tauri::command]
 async fn update_local_port(port: u16) -> HunterResult<()> {
     trace!("update - local_port");
-    let mut config = CONFIG.write().await;
-    config.set_local_port(port);
+    get_or_init_config_manager()
+        .await
+        .update_config(|config| {
+            config.set_local_port(port);
+        })
+        .await?;
     info!(message = "updated", local_port = port);
 
     Ok(())
@@ -290,41 +296,61 @@ async fn update_local_port(port: u16) -> HunterResult<()> {
 #[tauri::command]
 async fn update_pac(pac: &str) -> HunterResult<()> {
     trace!("update - pac");
-    let mut config = CONFIG.write().await;
-    config.set_pac(pac);
+    get_or_init_config_manager()
+        .await
+        .update_config(|config| {
+            config.set_pac(pac);
+        })
+        .await?;
     info!(message = "updated", pac = pac);
 
     Ok(())
 }
 
 #[tauri::command]
-async fn add_server_node(server_node: ServerNode) {
+async fn add_server_node(server_node: ServerNode) -> HunterResult<()> {
     trace!("add - new server node");
-    let mut config = CONFIG.write().await;
-    config.add_server_node(&server_node);
+    get_or_init_config_manager()
+        .await
+        .update_config(|config| {
+            config.add_server_node(&server_node);
+        })
+        .await?;
     info!(message = "added",server_node = ?server_node);
+
+    Ok(())
 }
 
 #[tauri::command]
-async fn update_server_node(index: usize, server_node: ServerNode) {
+async fn update_server_node(index: usize, server_node: ServerNode) -> HunterResult<()> {
     trace!("update - server node");
-    let mut config = CONFIG.write().await;
-    config.update_server_node(index, server_node);
+    get_or_init_config_manager()
+        .await
+        .update_config(|config| {
+            config.update_server_node(index, server_node);
+        })
+        .await?;
     info!(message = "updated", server_node_index = index);
+
+    Ok(())
 }
 
 #[tauri::command]
 async fn get_using_server_node() -> HunterResult<Option<ServerNode>> {
-    let config = CONFIG.read().await;
-
-    Ok(config.get_using_server_node().await?.cloned())
+    get_or_init_config_manager()
+        .await
+        .get_using_server_node()
+        .await
 }
 
 #[tauri::command]
 async fn write_trojan_config(server_node: ServerNode) -> HunterResult<()> {
     trace!("修改 trojan 配置文件");
-    let config = CONFIG.read().await;
-    config.write_trojan_config_file(&server_node).await?;
+
+    get_or_init_config_manager()
+        .await
+        .write_trojan_config_file(&server_node)
+        .await?;
 
     info!(
         message = "trojan 配置文件写入新的节点",
@@ -334,13 +360,19 @@ async fn write_trojan_config(server_node: ServerNode) -> HunterResult<()> {
 }
 
 #[tauri::command]
-async fn set_log_level(level: LogLevel) {
+async fn set_log_level(level: LogLevel) -> HunterResult<()> {
     trace!("修改 trojan-go 日志等级");
 
-    let mut config = CONFIG.write().await;
-    config.set_log_level(level.clone());
+    get_or_init_config_manager()
+        .await
+        .update_config(|config| {
+            config.set_log_level(level.clone());
+        })
+        .await?;
 
     info!(message = "trojan-go 日志等级已修改", level = ?level);
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -375,16 +407,7 @@ async fn show_main_window(app: AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> HunterResult<()> {
-    create_dir_if_not_exists(&[&EXECUTABLE_DIR, &CONFIG_DIR, &AUTOSTART_DIR])?;
-
     setup_logging();
-
-    info!(
-        message =  "使用的目录",
-        executable_dir = ?*EXECUTABLE_DIR,
-        config_dir =  ?*CONFIG_DIR,
-        autostart_dir =   ?*AUTOSTART_DIR
-    );
 
     trace!("初始化 tauri");
     tauri::Builder::default()

@@ -8,8 +8,8 @@ use std::{
 };
 use zip::ZipArchive;
 
-use crate::config::EXECUTABLE_DIR;
 use crate::error::HunterResult;
+use crate::global::EXECUTABLE_DIR;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Zip {
