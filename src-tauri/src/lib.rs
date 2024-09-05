@@ -406,7 +406,7 @@ async fn show_main_window(app: AppHandle) {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() -> HunterResult<()> {
+pub fn run() {
     setup_logging();
 
     trace!("初始化 tauri");
@@ -456,8 +456,7 @@ pub fn run() -> HunterResult<()> {
         .map_err(|e| {
             error!(message = "创建 app 失败", error = ?e);
             e
-        })?
+        })
+        .expect("Error while running tauri application")
         .run(handle_run_event);
-
-    Ok(())
 }

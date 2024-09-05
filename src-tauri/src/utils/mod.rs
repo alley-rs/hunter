@@ -1,6 +1,5 @@
 pub mod download;
 pub mod execute;
-pub mod fs;
 pub mod unzip;
 
 use reqwest::{Client, Proxy};
